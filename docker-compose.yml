@@ -1,0 +1,11 @@
+services:
+  inventory:
+    build: .
+    container_name: cohvera-inventory
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - INVENTORY_DB=/data/inventory.db
