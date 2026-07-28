@@ -1,0 +1,2 @@
+import { definePlugin } from "@cohvera/plugin-sdk";
+export default definePlugin({ id: "charging-workorders", name: "Laadpaal Werkbon", version: "0.1.0", description: "Werkbonnen voor installatie, onderhoud en interventies.", route: "/tools/charging-workorders", apiVersion: "1", requiredPermissions: ["charging-workorders.read", "charging-workorders.write"], status: "active", menu: { section: "tools", label: "Laadpaal Werkbon", order: 40 } });

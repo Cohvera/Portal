@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@cohvera/contracts": ["packages/contracts/src"],
+      "@cohvera/plugin-sdk": ["packages/plugin-sdk/src"],
+      "@cohvera/ui": ["packages/ui/src"]
+    }
+  }
+}

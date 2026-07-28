@@ -1,0 +1,1 @@
+{ "name": "@cohvera/plugin-inspections", "version": "0.1.0", "private": true, "type": "module", "scripts": { "build": "tsc --noEmit", "lint": "tsc --noEmit", "typecheck": "tsc --noEmit", "test": "node --test" }, "dependencies": { "@cohvera/plugin-sdk": "workspace:*" }, "devDependencies": { "typescript": "^5.7.2" } }

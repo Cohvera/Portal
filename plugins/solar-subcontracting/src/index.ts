@@ -1,0 +1,2 @@
+import { definePlugin } from "@cohvera/plugin-sdk";
+export default definePlugin({ id: "solar-subcontracting", name: "Solar Onderaanneming", version: "0.1.0", description: "Beheer van onderaannemers, planning en PV-projectoplevering.", route: "/tools/solar-subcontracting", apiVersion: "1", requiredPermissions: ["solar.read", "solar.write"], status: "active", menu: { section: "tools", label: "Solar Onderaanneming", order: 30 } });

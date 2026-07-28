@@ -1,11 +1,29 @@
 services:
-  inventory:
-    build: .
-    container_name: cohvera-inventory
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/data
+  postgres:
+    image: postgres:16-alpine
     environment:
-      - INVENTORY_DB=/data/inventory.db
+      POSTGRES_USER: cohvera
+      POSTGRES_PASSWORD: cohvera
+      POSTGRES_DB: cohvera
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cohvera"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
