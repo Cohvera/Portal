@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PluginState {
+  ACTIVE
+  DISABLED
+  MAINTENANCE
+  UNHEALTHY
+  DEPRECATED
+}
+
+model Company {
+  id          String              @id @default(cuid())
+  code        String              @unique
+  name        String
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  memberships CompanyMembership[]
+  pluginLinks CompanyPlugin[]
+  notifications Notification[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id             String              @id @default(cuid())
+  entraObjectId  String?             @unique
+  email          String              @unique
+  displayName    String
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  memberships    CompanyMembership[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  description String?
+  memberships CompanyMembership[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model CompanyMembership {
+  userId    String
+  companyId String
+  roleId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role      Role    @relation(fields: [roleId], references: [id])
+
+  @@id([userId, companyId])
+  @@index([companyId])
+}
+
+model Plugin {
+  id          String          @id
+  name        String
+  version     String
+  state       PluginState     @default(ACTIVE)
+  apiVersion  String
+  installedAt DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  companies   CompanyPlugin[]
+}
+
+model CompanyPlugin {
+  companyId String
+  pluginId  String
+  enabled   Boolean @default(true)
+  config    Json?
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plugin    Plugin  @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, pluginId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String?
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([userId, readAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String
+  userId     String?
+  pluginId   String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([pluginId, createdAt])
+}
