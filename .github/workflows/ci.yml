@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, sprint-1]
 
 jobs:
   validate:
@@ -22,14 +22,27 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://cohvera:cohvera@localhost:5432/cohvera
+      AUTH_MODE: development
+      WEB_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: 9.15.0 }
+        with:
+          version: 9.15.0
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm db:generate
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm db:generate
+      - name: Apply database migrations
+        run: pnpm --filter @cohvera/database exec prisma migrate deploy
+      - name: Seed development data
+        run: pnpm db:seed
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+      - name: Build
+        run: pnpm build
