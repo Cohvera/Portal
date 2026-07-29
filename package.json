@@ -1,0 +1,19 @@
+{
+  "name": "cohvera-portal",
+  "version": "0.2.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "build": "pnpm db:generate && pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm db:generate && pnpm -r typecheck",
+    "db:generate": "pnpm --filter @cohvera/database prisma:generate",
+    "db:migrate": "pnpm --filter @cohvera/database prisma:migrate",
+    "db:seed": "pnpm --filter @cohvera/database prisma:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@cohvera/services",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": { "build": "tsc --noEmit", "lint": "tsc --noEmit", "typecheck": "tsc --noEmit", "test": "node --test" },
+  "dependencies": { "@cohvera/database": "workspace:*", "@cohvera/plugin-sdk": "workspace:*" },
+  "devDependencies": { "typescript": "^5.7.2" }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@cohvera/auth",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": { "build": "tsc --noEmit", "lint": "tsc --noEmit", "typecheck": "tsc --noEmit", "test": "node --test" },
+  "dependencies": { "@cohvera/contracts": "workspace:*" },
+  "devDependencies": { "typescript": "^5.7.2" }
+}

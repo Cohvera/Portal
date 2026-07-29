@@ -1,0 +1,7 @@
+* @Cohvera/platform-team
+/apps/ @Cohvera/platform-team
+/packages/plugin-sdk/ @Cohvera/platform-team
+/packages/contracts/ @Cohvera/platform-team
+/plugins/inspections/ @Cohvera/inspections-team
+/plugins/solar-subcontracting/ @Cohvera/solar-team
+/plugins/charging-workorders/ @Cohvera/ev-team

@@ -1,0 +1,2 @@
+import { definePlugin } from "@cohvera/plugin-sdk";
+export default definePlugin({ id: "inspections", name: "Keuringen", version: "0.1.0", description: "Planning en opvolging van keuringen, attesten en controles.", route: "/tools/inspections", apiVersion: "1", requiredPermissions: ["inspections.read", "inspections.write"], status: "active", menu: { section: "tools", label: "Keuringen", order: 20 } });

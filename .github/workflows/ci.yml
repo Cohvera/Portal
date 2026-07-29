@@ -1,0 +1,48 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, sprint-1]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cohvera
+          POSTGRES_PASSWORD: cohvera
+          POSTGRES_DB: cohvera
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cohvera"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cohvera:cohvera@localhost:5432/cohvera
+      AUTH_MODE: development
+      WEB_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm db:generate
+      - name: Apply database migrations
+        run: pnpm --filter @cohvera/database exec prisma migrate deploy
+      - name: Seed development data
+        run: pnpm db:seed
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+      - name: Build
+        run: pnpm build
