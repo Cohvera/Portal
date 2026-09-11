@@ -85,7 +85,7 @@ export default function PortalDashboard() {
         {error && <div className="alert">API-fout: {error}</div>}
 
         <div className="cards" id="overview">
-          <article className="card"><span className="badge">Sprint 2</span><h3>COEF Platform</h3><strong>{loading ? "Laden..." : "Actief"}</strong><p className="muted">Zeven managementhubs bovenop de Sprint 1 portal core.</p></article>
+          <article className="card"><span className="badge">Sprint 3</span><h3>Tools MVP</h3><strong>{loading ? "Laden..." : "Actief"}</strong><p className="muted">Operationele workspaces bovenop de COEF-hubs.</p></article>
           <article className="card"><h3>Actieve plugins</h3><strong>{plugins.length}</strong><p className="muted">Per bedrijf vanuit de database</p></article>
           <article className="card"><h3>Bedrijven</h3><strong>{companies.length || 4}</strong><p className="muted">Gescheiden context en rechten</p></article>
           <article className="card"><h3>Platformstatus</h3><strong>Healthy</strong><p className="muted">Web, API, PostgreSQL, Redis en HTTPS</p></article>
@@ -105,7 +105,21 @@ export default function PortalDashboard() {
           </div>
         </section>
 
-        <section><div className="section-heading"><div><p className="eyebrow">Digital Hub</p><h2 id="tools">Tools & Solutions</h2></div><p className="muted section-copy">Modulaire tools die per business unit kunnen worden geactiveerd.</p></div><div className="cards">{plugins.map((plugin) => <article className="card" key={plugin.id}><span className="badge">{plugin.status}</span><h3>{plugin.name}</h3><p className="muted">{plugin.description}</p><small>{plugin.route}</small></article>)}</div></section>
+        <section>
+          <div className="section-heading"><div><p className="eyebrow">Digital Hub</p><h2 id="tools">Tools & Solutions</h2></div><p className="muted section-copy">Modulaire tools die per business unit kunnen worden geactiveerd.</p></div>
+          <div className="cards">
+            {plugins.map((plugin) => (
+              <Link className="tool-card-link" href={plugin.route} key={plugin.id}>
+                <article className="card tool-card">
+                  <span className="badge">{plugin.status}</span>
+                  <h3>{plugin.name}</h3>
+                  <p className="muted">{plugin.description}</p>
+                  <span className="text-link">Open tool →</span>
+                </article>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <section className="split">
           <article className="card" id="notifications"><h2>Notificaties</h2>{notifications.length === 0 ? <p className="muted">Geen nieuwe meldingen voor dit bedrijf.</p> : notifications.map((item) => <div className="list-row" key={item.id}><strong>{item.title}</strong><span>{item.body}</span></div>)}</article>
