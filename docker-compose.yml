@@ -1,29 +1,98 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: cohvera
-      POSTGRES_PASSWORD: cohvera
-      POSTGRES_DB: cohvera
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-cohvera}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-cohvera}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cohvera"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cohvera} -d ${POSTGRES_DB:-cohvera}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cohvera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cohvera}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "pnpm --filter @cohvera/database exec prisma migrate deploy && pnpm db:seed"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cohvera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cohvera}
+      REDIS_URL: redis://redis:6379
+      AUTH_MODE: ${AUTH_MODE:-development}
+      WEB_URL: https://${PORTAL_DOMAIN}
+      AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
+      AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
+      AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
       retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+      AUTH_MODE: ${AUTH_MODE:-development}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:?Set PORTAL_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
 
 volumes:
   postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
