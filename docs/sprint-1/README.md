@@ -1,60 +1,43 @@
-# Sprint 1 — Portal Core
+# Sprint 1 - Portal Core
 
-Status: **implemented on `codex/bootstrap-modular-portal`**.
+Status: functionally complete MVP foundation.
 
-## Scope delivered
+## Delivered
 
-### Database foundation
+- Next.js portal shell connected to the live API.
+- NestJS API with health, session, companies, company switching, plugin registry, notifications and audit endpoints.
+- PostgreSQL + Prisma data model and seed data.
+- Database-backed multi-company context for Cohvera, Q-Home, Tomme Energie and Warco.
+- Database-backed Portal Admin role and permissions for the seeded development user.
+- Company-specific plugin enablement.
+- Central audit logging for company selection.
+- Central notification data model and API.
+- Docker Compose deployment with web, API, PostgreSQL, Redis, migrations and Caddy.
+- HTTPS on `portal.cohvera.be` with automatic certificate management.
+- Plugin SDK and stable contracts package.
 
-Prisma/PostgreSQL data model for companies, users, memberships, roles, permissions, plugins, per-company plugin activation, notifications and audit logs. A repeatable seed creates Cohvera, Q-Home, Tomme Energie and Warco, a portal administrator and the first plugin registrations.
+## MVP identity
 
-### Authentication foundation
+Sprint 1 intentionally keeps `AUTH_MODE=development` so deployment can be validated independently of Microsoft Entra configuration. The seeded development user is resolved from PostgreSQL and its company memberships, role and permissions are returned by `/api/session`.
 
-`@cohvera/auth` defines the stable portal identity and permission checks. Development mode supplies a safe local identity. Microsoft Entra ID environment variables and integration boundary are prepared; activation requires the actual Entra tenant/app registration credentials.
+Before sensitive production data or write workflows are enabled, replace development identity with Microsoft Entra ID authentication.
 
-### Multi-company
+## Runtime acceptance
 
-Every membership is scoped to a company. Plugins, notifications and audit records carry company context. The API exposes companies and company selection; the portal shell shows the company switcher.
-
-### RBAC
-
-Roles and permissions are normalized in the database. Permission namespaces are owned by core or the relevant plugin. `portal.admin` acts as the administrative override.
-
-### Plugin registry
-
-The static, versioned plugin manifests remain the source of build-time truth. At API startup they are synchronized into the database. `CompanyPlugin` controls activation and configuration per company.
-
-### Notifications and audit
-
-Shared service functions provide central notification creation and append-only audit logging. Read endpoints return recent records per company.
-
-### Dashboard shell
-
-The MVP shell includes company context, user context, COEF navigation, plugin cards, platform status, notifications and audit sections.
-
-## Run locally
+After deployment verify:
 
 ```bash
-corepack enable
-pnpm install
-cp .env.example .env
-docker compose up -d
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-pnpm dev
+curl https://portal.cohvera.be/api/health
+curl https://portal.cohvera.be/api/session?companyCode=COH
+curl https://portal.cohvera.be/api/companies
 ```
 
-## Definition of done
+The browser dashboard at `https://portal.cohvera.be` must allow switching between Cohvera, Q-Home, Tomme Energie and Warco without a rebuild. Switching company writes an audit event and reloads the company-specific plugin, notification and audit context.
 
-- Core can compile without importing plugin internals.
-- Plugins are individually represented by manifests and company activation records.
-- Database entities are tenant-aware.
-- Permission namespaces are explicit.
-- Development authentication works without external credentials.
-- Entra production activation is documented as an environment/configuration task, not hard-coded.
-- CI generates Prisma Client before type checking and building.
+## Architectural boundary
 
-## Deferred configuration
+Plugins do not import each other's internals. Shared behavior goes through `packages/contracts`, `packages/plugin-sdk`, core APIs and later domain events. Plugin activation is stored per company in `CompanyPlugin`.
 
-Live Microsoft Entra authentication cannot be completed without tenant ID, app/client ID, secret or certificate, redirect URIs and approved group/claim mapping. The integration boundary is present so these credentials can be added without changing plugin code.
+## Next sprint
+
+Sprint 2 should add Microsoft Entra ID, production session handling, route authorization and the detailed COEF hub modules without changing plugin isolation rules.
