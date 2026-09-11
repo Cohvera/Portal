@@ -22,5 +22,9 @@ a { color: inherit; text-decoration: none; }
 .muted { color: #667085; }
 .sidebar .muted { color: #9fb4ce; }
 .badge { display: inline-flex; padding: 4px 8px; border-radius: 999px; background: #eaf8ef; color: #167a3c; font-size: 12px; }
+.alert { margin: 0 0 20px; padding: 12px 14px; border: 1px solid #f0c8c8; border-radius: 10px; background: #fff2f2; color: #9b1c1c; }
+.list-row { display: grid; gap: 4px; padding: 10px 0; border-top: 1px solid #eef1f5; }
+.list-row:first-of-type { border-top: 0; }
+.list-row span { color: #667085; font-size: 14px; }
 section { margin-top: 30px; }
 @media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .sidebar { display: none; } .main { padding: 20px; } .topbar { align-items: flex-start; } .split { grid-template-columns: 1fr; } }
