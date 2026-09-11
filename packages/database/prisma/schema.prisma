@@ -15,35 +15,40 @@ enum PluginState {
   DEPRECATED
 }
 
+enum PluginRuntime {
+  BUILTIN
+  EXTERNAL
+}
+
 model Company {
-  id          String              @id @default(cuid())
-  code        String              @unique
-  name        String
-  isActive    Boolean             @default(true)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  memberships CompanyMembership[]
-  pluginLinks CompanyPlugin[]
+  id            String              @id @default(cuid())
+  code          String              @unique
+  name          String
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  memberships   CompanyMembership[]
+  pluginLinks   CompanyPlugin[]
   notifications Notification[]
-  auditLogs   AuditLog[]
+  auditLogs     AuditLog[]
 }
 
 model User {
-  id             String              @id @default(cuid())
-  entraObjectId  String?             @unique
-  email          String              @unique
-  displayName    String
-  isActive       Boolean             @default(true)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  memberships    CompanyMembership[]
-  notifications  Notification[]
-  auditLogs      AuditLog[]
+  id            String              @id @default(cuid())
+  entraObjectId String?             @unique
+  email         String              @unique
+  displayName   String
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  memberships   CompanyMembership[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
 }
 
 model Role {
-  id          String           @id @default(cuid())
-  key         String           @unique
+  id          String              @id @default(cuid())
+  key         String              @unique
   name        String
   description String?
   memberships CompanyMembership[]
@@ -79,14 +84,20 @@ model CompanyMembership {
 }
 
 model Plugin {
-  id          String          @id
-  name        String
-  version     String
-  state       PluginState     @default(ACTIVE)
-  apiVersion  String
-  installedAt DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  companies   CompanyPlugin[]
+  id            String          @id
+  name          String
+  description   String?
+  version       String
+  state         PluginState     @default(ACTIVE)
+  apiVersion    String
+  runtime       PluginRuntime   @default(BUILTIN)
+  route         String?
+  entrypointUrl String?
+  manifestUrl   String?
+  sourceUrl     String?
+  installedAt   DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  companies     CompanyPlugin[]
 }
 
 model CompanyPlugin {

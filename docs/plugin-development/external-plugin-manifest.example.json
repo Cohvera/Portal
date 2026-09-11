@@ -1,0 +1,9 @@
+{
+  "id": "example-external-tool",
+  "name": "Example External Tool",
+  "version": "1.0.0",
+  "description": "Voorbeeld van een extern installeerbare Cohvera plugin.",
+  "apiVersion": "1",
+  "entrypointUrl": "https://example.org/cohvera-tool",
+  "sourceUrl": "https://github.com/example/cohvera-tool"
+}

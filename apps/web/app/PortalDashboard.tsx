@@ -74,6 +74,7 @@ export default function PortalDashboard() {
           <a href="#tools">Tools & Solutions</a>
           <a href="#notifications">Notificaties</a>
           <a href="#audit">Audit</a>
+          <Link href="/admin/plugins">Admin · Plugin Manager</Link>
         </nav>
       </aside>
       <main className="main">
@@ -85,7 +86,7 @@ export default function PortalDashboard() {
         {error && <div className="alert">API-fout: {error}</div>}
 
         <div className="cards" id="overview">
-          <article className="card"><span className="badge">Sprint 3</span><h3>Tools MVP</h3><strong>{loading ? "Laden..." : "Actief"}</strong><p className="muted">Operationele workspaces bovenop de COEF-hubs.</p></article>
+          <article className="card"><span className="badge">Sprint 4</span><h3>Plugin Platform</h3><strong>{loading ? "Laden..." : "Actief"}</strong><p className="muted">COEF-hubs, tools en centraal plugin management.</p></article>
           <article className="card"><h3>Actieve plugins</h3><strong>{plugins.length}</strong><p className="muted">Per bedrijf vanuit de database</p></article>
           <article className="card"><h3>Bedrijven</h3><strong>{companies.length || 4}</strong><p className="muted">Gescheiden context en rechten</p></article>
           <article className="card"><h3>Platformstatus</h3><strong>Healthy</strong><p className="muted">Web, API, PostgreSQL, Redis en HTTPS</p></article>
