@@ -5,8 +5,23 @@ export async function syncPluginRegistry(): Promise<void> {
   for (const manifest of pluginCatalog) {
     await prisma.plugin.upsert({
       where: { id: manifest.id },
-      update: { name: manifest.name, version: manifest.version, apiVersion: manifest.apiVersion },
-      create: { id: manifest.id, name: manifest.name, version: manifest.version, apiVersion: manifest.apiVersion }
+      update: {
+        name: manifest.name,
+        description: manifest.description,
+        version: manifest.version,
+        apiVersion: manifest.apiVersion,
+        runtime: "BUILTIN",
+        route: manifest.route
+      },
+      create: {
+        id: manifest.id,
+        name: manifest.name,
+        description: manifest.description,
+        version: manifest.version,
+        apiVersion: manifest.apiVersion,
+        runtime: "BUILTIN",
+        route: manifest.route
+      }
     });
   }
 }
