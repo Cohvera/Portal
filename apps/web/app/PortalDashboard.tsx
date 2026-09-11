@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { PluginManifest } from "@cohvera/contracts";
+import { coefHubs } from "../lib/coef";
 
 type Company = { id: string; code: string; name: string };
 type Session = { displayName: string; companyCode: string; companyName?: string; role?: string; permissions: string[] };
 type Notification = { id: string; title: string; body: string; createdAt: string };
 type Audit = { id: string; action: string; createdAt: string };
-
-const hubs = ["Strategy Hub", "Process Hub", "Digital Hub", "Operations Hub", "Performance Hub", "Improvement Hub", "Innovation Hub"];
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers || {}) } });
@@ -70,7 +70,7 @@ export default function PortalDashboard() {
         </select>
         <nav className="nav">
           <a href="#overview">Overzicht</a>
-          {hubs.map((hub) => <a key={hub} href={`#${hub.toLowerCase().replaceAll(" ", "-")}`}>{hub}</a>)}
+          {coefHubs.map((hub) => <Link key={hub.slug} href={`/hubs/${hub.slug}`}>{hub.name}</Link>)}
           <a href="#tools">Tools & Solutions</a>
           <a href="#notifications">Notificaties</a>
           <a href="#audit">Audit</a>
@@ -85,13 +85,27 @@ export default function PortalDashboard() {
         {error && <div className="alert">API-fout: {error}</div>}
 
         <div className="cards" id="overview">
-          <article className="card"><span className="badge">Sprint 1</span><h3>Portal Core</h3><strong>{loading ? "Laden..." : "Actief"}</strong><p className="muted">Database-backed company context, RBAC en plugin registry</p></article>
+          <article className="card"><span className="badge">Sprint 2</span><h3>COEF Platform</h3><strong>{loading ? "Laden..." : "Actief"}</strong><p className="muted">Zeven managementhubs bovenop de Sprint 1 portal core.</p></article>
           <article className="card"><h3>Actieve plugins</h3><strong>{plugins.length}</strong><p className="muted">Per bedrijf vanuit de database</p></article>
           <article className="card"><h3>Bedrijven</h3><strong>{companies.length || 4}</strong><p className="muted">Gescheiden context en rechten</p></article>
           <article className="card"><h3>Platformstatus</h3><strong>Healthy</strong><p className="muted">Web, API, PostgreSQL, Redis en HTTPS</p></article>
         </div>
 
-        <section><h2 id="tools">Tools & Solutions</h2><div className="cards">{plugins.map((plugin) => <article className="card" key={plugin.id}><span className="badge">{plugin.status}</span><h3>{plugin.name}</h3><p className="muted">{plugin.description}</p><small>{plugin.route}</small></article>)}</div></section>
+        <section>
+          <div className="section-heading"><div><p className="eyebrow">COEF Operational Framework</p><h2>Management Hubs</h2></div><p className="muted section-copy">Van strategie naar operatie, performance en continue verbetering in één omgeving.</p></div>
+          <div className="hub-cards">
+            {coefHubs.map((hub, index) => (
+              <Link className="hub-card" href={`/hubs/${hub.slug}`} key={hub.slug}>
+                <span className="hub-number">0{index + 1}</span>
+                <h3>{hub.name}</h3>
+                <p>{hub.tagline}</p>
+                <span className="text-link">Open hub →</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section><div className="section-heading"><div><p className="eyebrow">Digital Hub</p><h2 id="tools">Tools & Solutions</h2></div><p className="muted section-copy">Modulaire tools die per business unit kunnen worden geactiveerd.</p></div><div className="cards">{plugins.map((plugin) => <article className="card" key={plugin.id}><span className="badge">{plugin.status}</span><h3>{plugin.name}</h3><p className="muted">{plugin.description}</p><small>{plugin.route}</small></article>)}</div></section>
 
         <section className="split">
           <article className="card" id="notifications"><h2>Notificaties</h2>{notifications.length === 0 ? <p className="muted">Geen nieuwe meldingen voor dit bedrijf.</p> : notifications.map((item) => <div className="list-row" key={item.id}><strong>{item.title}</strong><span>{item.body}</span></div>)}</article>
