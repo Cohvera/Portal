@@ -8,11 +8,46 @@ import { syncPluginRegistry, writeAudit } from "@cohvera/services";
 
 const DEV_EMAIL = "remko@cohvera.be";
 
+const toolSnapshots: Record<string, { open: number; planned: number; completed: number; attention: number; activity: { title: string; detail: string }[] }> = {
+  "ventilation-cloud": {
+    open: 12, planned: 4, completed: 18, attention: 2,
+    activity: [
+      { title: "Project Warco - Appartements", detail: "Debieten gecontroleerd · 08:42" },
+      { title: "Residentie Parkzicht", detail: "Rapport klaar voor review · gisteren" },
+      { title: "Tomme - woning Kortrijk", detail: "Dimensionering gestart · gisteren" }
+    ]
+  },
+  inspections: {
+    open: 9, planned: 6, completed: 14, attention: 3,
+    activity: [
+      { title: "Q-Home - keuring PV", detail: "Gepland voor vrijdag · 09:10" },
+      { title: "Warco - technische ruimte", detail: "Attest ontvangen · gisteren" },
+      { title: "Herkeuring Kuurne", detail: "2 opmerkingen open · gisteren" }
+    ]
+  },
+  "solar-subcontracting": {
+    open: 7, planned: 5, completed: 11, attention: 1,
+    activity: [
+      { title: "PV-opdracht Deerlijk", detail: "Onderaannemer toegewezen · 07:58" },
+      { title: "Installatie Menen", detail: "Materiaallijst bevestigd · gisteren" },
+      { title: "Oplevering Waregem", detail: "Foto's ontvangen · gisteren" }
+    ]
+  },
+  "charging-workorders": {
+    open: 8, planned: 3, completed: 22, attention: 2,
+    activity: [
+      { title: "Alfen - interventie Roeselare", detail: "Werkbon gestart · 08:17" },
+      { title: "BlitzPower Lux", detail: "Meetwaarden opgeslagen · gisteren" },
+      { title: "Q-Home laadpaal", detail: "Werkbon ondertekend · gisteren" }
+    ]
+  }
+};
+
 @Controller()
 class AppController {
   @Get("health")
   health() {
-    return { status: "ok", service: "cohvera-api", version: "0.3.0" };
+    return { status: "ok", service: "cohvera-api", version: "0.4.0" };
   }
 
   @Get("session")
@@ -67,6 +102,11 @@ class AppController {
     const enabled = await prisma.companyPlugin.findMany({ where: { companyId, enabled: true }, include: { plugin: true } });
     const enabledIds = new Set(enabled.map((item) => item.pluginId));
     return pluginCatalog.filter((plugin) => enabledIds.has(plugin.id));
+  }
+
+  @Get("tools/:toolId/summary")
+  toolSummary(@Param("toolId") toolId: string) {
+    return toolSnapshots[toolId] ?? { open: 0, planned: 0, completed: 0, attention: 0, activity: [] };
   }
 
   @Get("companies/:companyCode/notifications")
