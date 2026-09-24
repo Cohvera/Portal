@@ -27,6 +27,7 @@ model Company {
   isActive      Boolean             @default(true)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+  projects      Project[]
   memberships   CompanyMembership[]
   pluginLinks   CompanyPlugin[]
   notifications Notification[]
@@ -141,4 +142,33 @@ model AuditLog {
 
   @@index([companyId, createdAt])
   @@index([pluginId, createdAt])
+}
+
+model Project {
+  id          String @id @default(cuid())
+  companyId   String
+  name        String
+  customer    String
+  owner       String
+  status      String @default("Actief")
+  statusColor String @default("#2563eb")
+  dueDate     DateTime? @db.Date
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tasks       ProjectTask[]
+  @@index([companyId])
+}
+
+model ProjectTask {
+  id          String @id @default(cuid())
+  projectId   String
+  title       String
+  description String @default("")
+  assignee    String @default("")
+  priority    String @default("NORMAL")
+  status      String @default("TODO")
+  dueDate     DateTime? @db.Date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([projectId, status])
 }

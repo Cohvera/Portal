@@ -28,10 +28,10 @@ export default function ToolPageClient({ tool }: { tool: ToolModule }) {
 
   return (
     <main className="tool-page">
-      <div className="tool-topline"><Link href="/">← Digital Hub</Link><span className="badge">{tool.status}</span></div>
+      <div className="tool-topline"><Link href="/tools">← Tools & Solutions</Link><span className="availability availability-demo">Demo · voorbeeldgegevens</span></div>
       <header className="tool-header">
         <div><p className="eyebrow">{tool.category}</p><h1>{tool.name}</h1><p className="tool-description">{tool.description}</p></div>
-        <button className="primary-action">{tool.actions[0]}</button>
+        <span className="badge">Workflowdemo</span>
       </header>
 
       {error && <div className="alert">API-fout: {error}</div>}
@@ -55,8 +55,8 @@ export default function ToolPageClient({ tool }: { tool: ToolModule }) {
       </section>
 
       <section className="card">
-        <div className="section-heading"><div><p className="eyebrow">Acties</p><h2>Snel starten</h2></div></div>
-        <div className="action-grid">{tool.actions.map((action, index) => <button key={action} className={index === 0 ? "action-tile action-tile-primary" : "action-tile"}><strong>{action}</strong><span>{index === 0 ? "Nieuwe flow starten" : "Open bestaande workflow"}</span></button>)}</div>
+        <div className="section-heading"><div><p className="eyebrow">In voorbereiding</p><h2>Voorziene acties</h2></div></div>
+        <div className="action-grid">{tool.actions.map((action, index) => <div key={action} className={index === 0 ? "action-tile action-tile-primary" : "action-tile"}><strong>{action}</strong><span>Nog niet beschikbaar</span></div>)}</div>
       </section>
     </main>
   );

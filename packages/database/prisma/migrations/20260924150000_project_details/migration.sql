@@ -1,0 +1,1 @@
+ALTER TABLE "Project" ADD COLUMN "statusColor" TEXT NOT NULL DEFAULT '#2563eb', ADD COLUMN "dueDate" DATE;

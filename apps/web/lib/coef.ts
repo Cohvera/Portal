@@ -56,7 +56,7 @@ export const coefHubs: HubDefinition[] = [
     tagline: "Applicaties, integraties en data als één platform.",
     purpose: "Beheert de Cohvera tools, middleware, integraties en digitale capabilities als modulair platform.",
     cards: [
-      { title: "Tools & Solutions", description: "Ventilatie Cloud, keuringen, solar-onderaanneming en laadpaal-werkbon.", status: "active", href: "/#tools" },
+      { title: "Tools & Solutions", description: "Engineering, magazijn, klantportaal en tools voor de uitvoering.", status: "active", href: "/tools" },
       { title: "Middleware", description: "Koppelingen tussen portal, ERP, IoT en externe diensten.", status: "planned" },
       { title: "Platform health", description: "Web, API, database, cache en HTTPS-status.", status: "active", metric: "Healthy" }
     ]
@@ -71,7 +71,7 @@ export const coefHubs: HubDefinition[] = [
       { title: "Projectcontrol", description: "Projectstatus, deadlines, risico's en volgende acties.", status: "planned" },
       { title: "Werkvoorraad", description: "Planning, installatieteams en capaciteit per business unit.", status: "planned" },
       { title: "Exceptions", description: "Blokkades, ontbrekend materiaal, laattijdige acties en escalaties.", status: "attention" },
-      { title: "Field tools", description: "Werkbonnen, keuringen en onderaannemers rechtstreeks vanuit de operatie.", status: "active", href: "/#tools" }
+      { title: "Field tools", description: "Werkbonnen, keuringen en onderaannemers rechtstreeks vanuit de operatie.", status: "active", href: "/tools" }
     ]
   },
   {
