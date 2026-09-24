@@ -88,3 +88,20 @@ docker compose exec -e TEST_API_URL=http://127.0.0.1:4000 api pnpm --filter @coh
 ```
 
 This test removes only the project it creates.
+
+## Accounts & permissions
+
+`/admin/accounts` manages account names, normalized email addresses, active status and a role per company.
+The standard roles are Portal Admin, Manager, Medewerker and Lezer. The role panel lists their stored permissions.
+No invitation emails are sent. Accounts, memberships and audit events are stored in PostgreSQL.
+Run `pnpm db:seed` in the backend environment to provision the standard roles and permission keys.
+
+Account administration is explicitly limited to `AUTH_MODE=development` and resolves the fixed Remko identity on the server.
+It verifies the active account's `portal.admin` permission; request headers cannot choose an acting user.
+Other auth modes reject the new administration endpoints until an authenticated identity adapter is configured.
+The current development administrator cannot be edited, and a company cannot lose its last active administrator.
+These are account-management foundations, not a completed login system or portal-wide permission enforcement.
+
+```bash
+docker compose exec -e TEST_API_URL=http://127.0.0.1:4000 api pnpm --filter @cohvera/api exec tsx --test tests/accounts.integration.ts
+```
