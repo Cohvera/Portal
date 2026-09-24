@@ -3,6 +3,7 @@ import { PrismaClient, PluginState } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const permissions = [
+  "projects.read", "projects.manage", "tasks.read", "tasks.manage",
   "portal.admin", "companies.read", "companies.switch", "users.read", "users.manage",
   "plugins.read", "plugins.manage", "notifications.read", "audit.read",
   "inspections.read", "inspections.write", "solar.read", "solar.write",
@@ -24,11 +25,33 @@ async function main() {
     update: {}, create: { roleId: adminRole.id, permissionId: permission.id }
   })));
 
+  const rolePresets = [
+    {key:"manager",name:"Manager",description:"Projecten en taken beheren, operationele gegevens raadplegen.",permissions:["companies.read","companies.switch","projects.read","projects.manage","tasks.read","tasks.manage","plugins.read","notifications.read","audit.read"]},
+    {key:"employee",name:"Medewerker",description:"Projecten bekijken en dagelijkse taken opvolgen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","tasks.manage","plugins.read","notifications.read"]},
+    {key:"viewer",name:"Lezer",description:"Gegevens bekijken zonder wijzigingen aan te brengen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","plugins.read","notifications.read"]}
+  ];
+  for (const preset of rolePresets) {
+    const role = await prisma.role.upsert({where:{key:preset.key},update:{},create:{key:preset.key,name:preset.name,description:preset.description}});
+    for (const key of preset.permissions) {
+      const permission=permissionRows.find(p=>p.key===key)!;
+      await prisma.rolePermission.upsert({where:{roleId_permissionId:{roleId:role.id,permissionId:permission.id}},update:{},create:{roleId:role.id,permissionId:permission.id}});
+    }
+  }
+
   const user = await prisma.user.upsert({ where: { email: "remko@cohvera.be" }, update: { displayName: "Remko" }, create: { email: "remko@cohvera.be", displayName: "Remko" } });
   await Promise.all(companies.map((company) => prisma.companyMembership.upsert({
     where: { userId_companyId: { userId: user.id, companyId: company.id } },
     update: { roleId: adminRole.id }, create: { userId: user.id, companyId: company.id, roleId: adminRole.id }
   })));
+
+  for (const company of companies) {
+    for (const [suffix, name, customer] of [["launch", "Projectopstart & planning", "Interne werking"], ["delivery", "Oplevering residentie Parkzicht", "Residentie Parkzicht"]]) {
+      await prisma.project.upsert({
+        where: { id: `demo-${company.code}-${suffix}` }, update: {},
+        create: { id: `demo-${company.code}-${suffix}`, companyId: company.id, name, customer, owner: "Remko" }
+      });
+    }
+  }
 
   const plugins = [
     ["ventilation-cloud", "Ventilatie Cloud"], ["inspections", "Keuringen"],

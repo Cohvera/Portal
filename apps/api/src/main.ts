@@ -1,4 +1,6 @@
 import "reflect-metadata";
+import { AccountsController } from "./accounts";
+import { ProjectsController } from "./projects";
 import { Body, Controller, Delete, Get, Headers, Module, Param, Post, Query, UnauthorizedException, BadRequestException } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { developmentIdentity } from "@cohvera/auth";
@@ -140,7 +142,7 @@ class AppController {
   async selectCompany(@Param("companyCode") companyCode: string) { const company = await prisma.company.findUnique({ where: { code: companyCode } }); if (!company) return { selectedCompanyCode: companyCode, found: false }; const user = await prisma.user.findUnique({ where: { email: DEV_EMAIL } }); await writeAudit({ companyId: company.id, userId: user?.id, action: "company.selected", metadata: { source: "portal", companyCode } }); return { selectedCompanyId: company.id, selectedCompanyCode: company.code, found: true }; }
 }
 
-@Module({ controllers: [AppController] })
+@Module({ controllers: [AppController, ProjectsController, AccountsController] })
 class AppModule {}
 
 async function bootstrap() {

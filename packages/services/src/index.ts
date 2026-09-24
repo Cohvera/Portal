@@ -1,4 +1,4 @@
-import { prisma } from "@cohvera/database";
+import { prisma, type Prisma } from "@cohvera/database";
 import { pluginCatalog } from "@cohvera/plugin-sdk";
 
 export async function syncPluginRegistry(): Promise<void> {
@@ -28,7 +28,7 @@ export async function syncPluginRegistry(): Promise<void> {
 
 export async function writeAudit(input: {
   companyId: string; userId?: string; pluginId?: string; action: string;
-  entityType?: string; entityId?: string; metadata?: Record<string, unknown>;
+  entityType?: string; entityId?: string; metadata?: Prisma.InputJsonObject;
 }): Promise<void> {
   await prisma.auditLog.create({ data: input });
 }
