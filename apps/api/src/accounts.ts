@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   NotFoundException,
@@ -106,6 +107,42 @@ export class AccountsController {
   @Patch(":id")
   async update(@Param("id") id: string, @Body() body: unknown) {
     return this.save(id, body);
+  }
+
+  @Delete(":id")
+  async remove(@Param("id") id: string) {
+    const actor = await requireAccountAdmin();
+    if (id === actor.id)
+      throw new ForbiddenException("Je kunt je eigen account niet verwijderen.");
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({ where: { id }, include: userInclude });
+        if (!user) throw new NotFoundException("Account niet gevonden.");
+        if (authMode() === "development" && user.isActive) {
+          for (const membership of user.memberships) {
+            if (!membership.role.permissions.some(p => p.permission.key === "portal.admin")) continue;
+            const others = await tx.companyMembership.count({ where: {
+              companyId: membership.companyId, userId: { not: id }, user: { isActive: true },
+              role: { permissions: { some: { permission: { key: "portal.admin" } } } },
+            } });
+            if (!others) throw new ConflictException(`Behoud minstens één actieve beheerder voor ${membership.company.name}.`);
+          }
+        }
+        const companyIds = user.memberships.map(m => m.companyId);
+        if (!companyIds.length) companyIds.push((await tx.company.findUniqueOrThrow({ where: { code: "COH" } })).id);
+        await tx.auditLog.createMany({ data: companyIds.map(companyId => ({
+          companyId, userId: actor.id, action: "account.deleted", entityType: "user", entityId: id,
+        })) });
+        // Database cascades revoke sessions, memberships and personal notifications.
+        // Historical audit entries are retained; projects and dossiers are independent.
+        await tx.user.delete({ where: { id } });
+        return { deleted: true };
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034")
+        throw new ConflictException("Het account werd ondertussen gewijzigd. Vernieuw en probeer opnieuw.");
+      throw error;
+    }
   }
 
   private async save(id: string | undefined, body: unknown) {

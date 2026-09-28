@@ -67,6 +67,25 @@ export default function AccountsPage() {
   const [message, setMessage] = useState("");
   const [version, setVersion] = useState(0);
   const dialog = useRef<HTMLDialogElement>(null);
+  const deleteDialog = useRef<HTMLDialogElement>(null);
+  const [deleting, setDeleting] = useState<Account | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  async function removeAccount() {
+    if (!deleting || busy) return;
+    setBusy(true);
+    setDeleteError("");
+    setMessage("");
+    try {
+      await request(`/api/admin/accounts/${encodeURIComponent(deleting.id)}`, { method: "DELETE", body: "{}" });
+      deleteDialog.current?.close();
+      setData(current => current ? { ...current, users: current.users.filter(u => u.id !== deleting.id) } : current);
+      setMessage(`Account van ${deleting.displayName} verwijderd.`);
+      setDeleting(null);
+      try { await refresh(); } catch { setError("Account verwijderd, maar het overzicht kon niet worden vernieuwd. Herlaad de pagina."); }
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Verwijderen mislukt.");
+    } finally { setBusy(false); }
+  }
   async function refresh() {
     const result = await request<Overview>("/api/admin/accounts");
     setData(result);
@@ -327,6 +346,13 @@ export default function AccountsPage() {
                             Bewerken
                           </button>
                         )}
+                        {u.id !== data.actorId && (
+                          <button className="danger-button" disabled={busy}
+                            aria-label={`${u.displayName} verwijderen`}
+                            onClick={() => { setDeleting(u); setDeleteError(""); deleteDialog.current?.showModal(); }}>
+                            Verwijderen
+                          </button>
+                        )}
                       </div>
                     </article>
                   ))}
@@ -382,6 +408,21 @@ export default function AccountsPage() {
           </>
         )
       )}
+      <dialog ref={deleteDialog} className="catalog-dialog account-dialog"
+        aria-labelledby="delete-account-title" aria-describedby="delete-account-description"
+        onCancel={e => { if (busy) e.preventDefault(); }}>
+        <div className="task-form">
+          <header><p className="eyebrow">Accountbeheer</p><h2 id="delete-account-title">Account verwijderen?</h2></header>
+          <p id="delete-account-description">Je verwijdert <strong>{deleting?.displayName}</strong> ({deleting?.email}) uit Cohvera. Bedrijfstoegang, actieve sessies en persoonlijke notificaties worden verwijderd. Dit kun je niet ongedaan maken.</p>
+          <p className="muted">Projecten, keuringsdossiers en de activiteitshistoriek blijven bewaard.</p>
+          <aside className="accounts-development">Het Microsoft-account blijft bestaan. Met een geldige Entra-portaalrol kan deze persoon opnieuw aanmelden en een nieuw account zonder bedrijfstoegang krijgen. Trek die rol in Entra in om ook opnieuw aanmelden te blokkeren.</aside>
+          {deleteError && <div role="alert" className="alert">{deleteError}</div>}
+          <footer className="dialog-actions">
+            <button className="secondary-button" autoFocus disabled={busy} onClick={() => deleteDialog.current?.close()}>Annuleren</button>
+            <button className="danger-button" disabled={busy} onClick={() => void removeAccount()}>{busy ? "Verwijderen…" : "Account definitief verwijderen"}</button>
+          </footer>
+        </div>
+      </dialog>
       <dialog
         ref={dialog}
         className="catalog-dialog account-dialog"

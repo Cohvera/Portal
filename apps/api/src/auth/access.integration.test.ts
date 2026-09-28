@@ -185,6 +185,27 @@ test(
         },
       });
       assert.equal((await req("/admin/accounts", "business")).status, 403);
+      // Deletion is administrator-only, cannot target self, and revokes sessions.
+      assert.equal((await req(`/admin/accounts/${ids[6]}`, "business", "DELETE", {})).status, 403);
+      assert.equal((await req(`/admin/accounts/${ids[2]}`, "admin", "DELETE", {})).status, 403);
+      assert.equal((await req(`/admin/accounts/${ids[6]}`, "admin", "DELETE", {}, "https://evil.invalid")).status, 403);
+      const history = await prisma.auditLog.create({ data: { companyId: company.id, userId: ids[6], action: "test.history" } });
+      const notification = await prisma.notification.create({ data: { companyId: company.id, userId: ids[6], title: "Test", body: "Test" } });
+      try {
+        assert.equal((await req(`/admin/accounts/${ids[6]}`, "admin", "DELETE", {})).status, 200);
+        assert.equal(await prisma.user.findUnique({ where: { id: ids[6] } }), null);
+        assert.equal(await prisma.portalSession.count({ where: { userId: ids[6] } }), 0);
+        assert.equal(await prisma.notification.findUnique({ where: { id: notification.id } }), null);
+        assert.equal((await prisma.auditLog.findUniqueOrThrow({ where: { id: history.id } })).userId, null);
+        assert.equal((await req("/auth/me", "unassigned")).status, 401);
+        assert.equal((await req(`/admin/accounts/${ids[6]}`, "admin", "DELETE", {})).status, 404);
+        assert.ok(await prisma.auditLog.findFirst({ where: { action: "account.deleted", entityId: ids[6], userId: ids[2] } }));
+        // A member account also loses every company assignment.
+        assert.equal((await req(`/admin/accounts/${ids[0]}`, "admin", "DELETE", {})).status, 200);
+        assert.equal(await prisma.companyMembership.count({ where: { userId: ids[0] } }), 0);
+      } finally {
+        await prisma.auditLog.deleteMany({ where: { OR: [{ id: history.id }, { action: "account.deleted", entityId: { in: ids } }] } });
+      }
       // Real logout revokes the opaque session, independent of the Microsoft logout redirect.
       const logout = await req("/auth/logout", "admin", "POST", {});
       assert.equal(logout.status, 303);
