@@ -18,7 +18,6 @@ type Identity = {
   mode: "development" | "entra";
   companies: Company[];
   canManageCatalog: boolean;
-  canManageAccounts: boolean;
   businessAccess: {
     companyCode: string;
     permissions: string[];
@@ -29,7 +28,6 @@ const CompanyContext = createContext({
   companies: [] as Company[],
   companyCode: "",
   canManageCatalog: false,
-  canManageAccounts: false,
   can: (_permission: string): boolean => false,
 });
 export const useCompany = () => useContext(CompanyContext);
@@ -136,9 +134,9 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       ? [{ href: "/#notifications", name: "Notificaties" }]
       : []),
     ...(can("audit.read") ? [{ href: "/#audit", name: "Audit" }] : []),
-    ...(identity.canManageAccounts
+    ...(identity.canManageCatalog
       ? [
-          { href: "/admin/accounts", name: "Accounts & rechten" },
+          { href: "/admin/accounts", name: "Accounts" },
           { href: "/admin/plugins", name: "Plugin Manager" },
         ]
       : []),
@@ -151,7 +149,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         ? "tasks.read"
         : null;
   const denied = pathname.startsWith("/admin/")
-    ? !identity.canManageAccounts
+    ? !identity.canManageCatalog
     : required
       ? !can(required)
       : false;
@@ -162,7 +160,6 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         companies: identity.companies,
         companyCode,
         canManageCatalog: identity.canManageCatalog,
-        canManageAccounts: identity.canManageAccounts,
         can,
       }}
     >
@@ -264,16 +261,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
                 Je bent aangemeld. Er is nog geen bedrijfstoegang aan je account
                 toegewezen.
               </p>
-              {identity.canManageAccounts ? (
-                <Link className="button-primary" href="/admin/accounts">
-                  Bedrijfstoegang instellen
-                </Link>
-              ) : (
-                <p>
-                  Vraag een Cohvera-portaalbeheerder om je bedrijf en
-                  bedrijfsrol in te stellen.
-                </p>
-              )}
+              <p>Neem contact op met de beheerder van jullie Microsoft Entra-omgeving. Accountbeheer gebeurt buiten dit portaal.</p>
             </main>
           ) : (
             <div key={`${identity.userId}:${companyCode}`}>{children}</div>

@@ -97,7 +97,7 @@ This test removes only the project it creates.
 
 The portal supports Microsoft Entra ID with Authorization Code Flow, PKCE, signed-token validation and server-side sessions. `Portal.User` grants basic entry; `Portal.Admin` grants platform management. Business memberships and roles control company data separately. All API controllers are protected, including direct requests and document downloads.
 
-`/admin/accounts` manages company assignments and business roles. New Entra users receive no automatic company data access. Existing local accounts can be linked explicitly by Entra object-ID; email matching never transfers permissions. Account creation in Cohvera does not create a Microsoft account or send an invitation.
+`/admin/accounts` is a read-only administrator overview. Accounts and group membership are managed in Entra. Configure `ENTRA_GROUP_MAPPINGS` and the ID-token groups claim to synchronize company assignments and business roles at login. A matching group grants its configured companies; removed groups remove access on the next login. The overview shows known portal users and the last synchronized roles/groups, not the entire Microsoft directory. See `docs/entra-id-rbac.md` for configuration.
 
 Read [the implementation and activation guide](docs/entra-id-rbac.md). Fill the private Entra configuration before setting AUTH_MODE=entra. The default session lasts 15 minutes and requires sign-in again for current roles. Development mode keeps the explicit local Remko adapter and must not be used as public production authentication.
 

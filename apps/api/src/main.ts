@@ -11,11 +11,11 @@ import {
   portalAdmin,
 } from "./auth/context";
 import { requestContext } from "./auth/session";
+import { AccountsController } from "./accounts";
 import { authMode } from "./auth/config";
 import type { Request, Response, NextFunction } from "express";
 import { InspectionsController } from "./inspections/controller";
 import { CatalogController, AdminAccessController } from "./catalog";
-import { AccountsController } from "./accounts";
 import { ProjectsController } from "./projects";
 import {
   Body,
@@ -398,10 +398,10 @@ class AppController {
 @Module({
   controllers: [
     AuthController,
+    AccountsController,
     InspectionsController,
     AppController,
     ProjectsController,
-    AccountsController,
     CatalogController,
     AdminAccessController,
   ],

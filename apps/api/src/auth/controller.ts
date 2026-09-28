@@ -6,6 +6,7 @@ import { authMode, entraSettings } from "./config";
 import { allowedCompanies, context } from "./context";
 import { isPortalAdmin, identityClaims } from "./policy";
 import { cookie, hashToken, opaqueToken } from "./session";
+import { companyAccess, syncCompanyAccess } from "./groups";
 let configuration: Promise<oidc.Configuration> | undefined;
 export function oidcConfiguration() {
   if (!configuration) {
@@ -62,7 +63,6 @@ export class AuthController {
             m.role.permissions.some((p) => p.permission.key === "portal.admin"),
         })),
       canManageCatalog: isPortalAdmin(ctx.roles),
-      canManageAccounts: isPortalAdmin(ctx.roles),
     };
   }
   @Get("login") async login(@Res() res: Response) {
@@ -148,6 +148,7 @@ export class AuthController {
       const claims = tokens.claims();
       if (!claims) throw new Error("invalid_identity");
       const identity = identityClaims(claims, s.tenant);
+      const access = companyAccess(claims);
       const sessionToken = opaqueToken();
       await prisma.$transaction(async (tx) => {
         const existing = await tx.user.findUnique({
@@ -178,6 +179,9 @@ export class AuthController {
                 entraObjectId: identity.objectId,
               },
             });
+        await syncCompanyAccess(tx, user.id, access);
+        // A fresh login replaces older sessions and their previous role claims.
+        await tx.portalSession.deleteMany({ where: { userId: user.id } });
         await tx.portalSession.create({
           data: {
             tokenHash: hashToken(sessionToken),
@@ -198,7 +202,7 @@ export class AuthController {
               action: "auth.login",
               entityType: "user",
               entityId: user.id,
-              metadata: { provider: "entra", roles: identity.roles },
+              metadata: { provider: "entra", roles: identity.roles, groups: access.matched, groupsClaimPresent: access.groupsClaimPresent },
             },
           });
       });
@@ -215,6 +219,10 @@ export class AuthController {
     } catch (e) {
       const message = e instanceof Error ? e.message : "";
       const safe = [
+        "group_names_required",
+        "groups_overage",
+        "group_configuration",
+        "invalid_groups",
         "no_portal_role",
         "identity_link_required",
         "account_disabled",

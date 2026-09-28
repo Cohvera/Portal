@@ -13,7 +13,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { prisma, Prisma } from "@cohvera/database";
-import { requireAccountAdmin } from "./accounts";
+import { portalAdmin } from "./auth/context";
 
 const builtinIds = new Set([
   "heat-loss",
@@ -86,15 +86,14 @@ export class AdminAccessController {
   @Get()
   async access() {
     try {
-      const actor = await requireAccountAdmin();
+      const actor = portalAdmin();
       return {
         canManageCatalog: true,
-        canManageAccounts: true,
         displayName: actor.displayName,
       };
     } catch (e) {
       if (e instanceof ForbiddenException || e instanceof UnauthorizedException)
-        return { canManageCatalog: false, canManageAccounts: false };
+        return { canManageCatalog: false };
       throw e;
     }
   }
@@ -123,7 +122,7 @@ export class CatalogController {
   }
   @Post()
   async create(@Body() body: unknown) {
-    const actor = await requireAccountAdmin();
+    const actor = portalAdmin();
     const data = await customEntry(body);
     return prisma.$transaction(async (tx) => {
       const row = await tx.toolCatalog.create({
@@ -135,7 +134,7 @@ export class CatalogController {
   }
   @Patch(":id/companies")
   async assign(@Param("id") id: string, @Body() body: unknown) {
-    const actor = await requireAccountAdmin();
+    const actor = portalAdmin();
     const codes = await companyCodes(object(body).companyCodes);
     return prisma.$transaction(async (tx) => {
       const existing = await tx.toolCatalog.findUnique({ where: { id } });
@@ -153,7 +152,7 @@ export class CatalogController {
   // Explicit migration of the previous browser-only catalog, preserving existing server records.
   @Post("import")
   async importLocal(@Body() body: unknown) {
-    const actor = await requireAccountAdmin();
+    const actor = portalAdmin();
     const b = object(body);
     if (!Array.isArray(b.entries) || b.entries.length > 100)
       throw new BadRequestException(

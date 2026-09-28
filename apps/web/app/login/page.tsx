@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 const messages: Record<string, string> = {
+  group_names_required: "Entra stuurt groeps-ID’s, maar dit portaal gebruikt groepsnamen. Laat de beheerder groepsnamen meesturen voor de aan deze applicatie toegewezen groepen.",
+  groups_overage: "Microsoft stuurde geen volledige groepenlijst. Laat de Entra-beheerder de groepsclaim beperken tot de groepen van deze applicatie.",
+  group_configuration: "De koppeling tussen Entra-groepen en bedrijven is niet correct geconfigureerd. Neem contact op met de beheerder.",
+  invalid_groups: "Microsoft stuurde geen geldige groepsinformatie. Controleer de groepsclaim in Entra.",
   configuration:
     "De Microsoft-aanmelding is nog niet volledig geconfigureerd of tijdelijk niet bereikbaar. Neem contact op met de portaalbeheerder.",
   no_portal_role:

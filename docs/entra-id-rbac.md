@@ -18,7 +18,7 @@ Er zijn twee afzonderlijke vragen:
 1. **Mag deze persoon binnen, en mag die het portaal beheren?** Dit bepaalt Entra via bovenstaande rollen.
 2. **Voor welke bedrijven en werkzaamheden mag deze persoon gegevens zien of aanpassen?** Dit bepaalt Cohvera via bedrijfstoegang en bedrijfsrollen.
 
-Voorbeeld: iemand met Portal.User kan Manager zijn bij Tomme en Lezer bij Q-Home. Die persoon wordt daardoor geen portaalbeheerder. Alleen Portal.Admin kan accounts/bedrijfstoegang, tools en plugins beheren. Ook Portal.Admin heeft een bedrijfstoewijzing nodig om de operationele dossiers van een bedrijf te openen; beheer van de toewijzingen zelf is wel beschikbaar zonder zo'n toewijzing.
+Voorbeeld: iemand met Portal.User kan Manager zijn bij Tomme en Lezer bij Q-Home. Die persoon wordt daardoor geen portaalbeheerder. Alleen Portal.Admin kan tools en plugins beheren. Accountbeheer gebeurt uitsluitend buiten het portaal, in Entra. Ook Portal.Admin heeft een bedrijfstoewijzing nodig om de operationele dossiers van een bedrijf te openen; tools en plugins beheren is wel beschikbaar zonder zo'n toewijzing.
 
 De voorgestelde aanmeldroute is Authorization Code Flow met OpenID Connect. Tokens worden door een onderhouden library gecontroleerd. De vaste combinatie van tenant-ID en object-ID identificeert een persoon; een e-mailadres is veranderlijk. Geen Microsoft Graph-rechten zijn nodig voor deze login en rollencontrole.
 
@@ -29,22 +29,59 @@ De voorgestelde aanmeldroute is Authorization Code Flow met OpenID Connect. Toke
 - Validatie van issuer, audience, lifetime (incl. not-before), tenant-ID, object-ID en exacte Portal.User/Portal.Admin-waarden. Geen eigen JWT-validator.
 - Server-side sessies in PostgreSQL. De browser ontvangt alleen een willekeurige HttpOnly-cookie met SameSite=Lax en Secure bij HTTPS. Alleen een SHA-256-hash van het sessiegeheim staat in de database. Access-/refresh-/ID-tokens worden niet opgeslagen of naar de frontend gestuurd.
 - Sessielevensduur standaard 15 minuten, maximaal de ID-tokenlevensduur. Geen stilzwijgende sessieverlenging: opnieuw aanmelden haalt nieuwe rollen op. Entra-groepswijzigingen worden zichtbaar na verversing bij Microsoft en nieuwe aanmelding; dit is geen onmiddellijke groepsrevocatie via Graph.
-- Logout trekt de lokale sessie in en verwijst vervolgens naar Microsoft logout. Deactiveren of wijzigen van een lokaal account trekt bestaande sessies in; businessrollen worden bovendien bij elke aanvraag uit de database gelezen.
+- Logout trekt de lokale sessie in en verwijst vervolgens naar Microsoft logout. Businessrollen worden bij elke aanvraag uit de database gelezen.
 - Globale API-beveiliging. Alleen health, loginconfiguratie, loginstart en callback zijn openbaar. Geen spoofbare identityheaders of plugin-admin-token als alternatieve beheerroute.
 - Origincontrole voor wijzigingen, alleen JSON voor gewone mutaties, `Cache-Control: no-store` en eenmalige aanmeldpogingen van tien minuten.
 - Bedrijfstoegang en bedrijfspermissies op de API, ook voor directe URL's en documentdownloads. Geen automatische toegang tot alle bedrijven voor nieuwe accounts.
 - Sidebar, bedrijfskieslijst en beheerknoppen volgen de serverrechten. De frontend is aanvullende UX; de API blijft de beveiligingsgrens.
 - Caddy en Next.js leiden `/auth/*` door naar de API, zodat de callback exact op het adres uit het document werkt.
 
-## Bestaande accounts en eerste beheerder
+## Accounts bekijken, beheer in Entra
 
-Een nieuwe Entra-gebruiker wordt na een geldige login geregistreerd, zonder automatische bedrijfstoegang. Een Portal.Admin kan in **Accounts & rechten** de gewenste bedrijfsrol toewijzen, ook aan zichzelf.
+Portal.Admin heeft een alleen-lezen accountoverzicht: naam, e-mail, lokale status, bedrijven, bedrijfsrollen, portaalrollen, laatste aanmelding en gekoppelde bedrijfsgroepen. Dit toont reeds bekende portaalgebruikers, niet alle gebruikers in de Microsoft-directory. Rollen/groepen zijn een momentopname van de laatste login, geen live Microsoft-status. Schrijven via `/admin/accounts` is niet beschikbaar.
 
-Een bestaand lokaal account wordt nooit automatisch overgenomen op basis van hetzelfde e-mailadres. Koppel zo'n account via **Accounts & rechten → Entra object-ID** aan de object-ID van de gebruiker uit de juiste tenant. De tenant wordt uit de serverconfiguratie genomen. Een bestaande identiteit kan via dit formulier niet worden vervangen.
+## Entra-groepen koppelen aan bedrijven
 
-Koppel vóór activering bij voorkeur het bestaande beheeraccount aan de juiste object-ID, terwijl de expliciete ontwikkelmodus nog werkt en de Entra-configuratie al is ingevuld. Gebruik anders een toegewezen Portal.Admin-account dat nog geen lokaal e-mailadresconflict heeft om het eerste beheer te doen. Geef portaalbeheer via Entra; een databasebedrijfsrol is geen vervanging voor Portal.Admin.
+De standaardkoppeling gebruikt exacte groepsnamen:
 
-De oude lokale rol `portal-admin` wordt voor bestaande bedrijfstoewijzingen alleen als volledige **bedrijfsrol** behandeld; in Entra-modus verleent die geen portaalbeheer. Nieuwe toewijzingen gebruiken **Bedrijfsbeheerder**. De seed creëert de vaste Remko-identiteit uitsluitend wanneer AUTH_MODE expliciet development is en overschrijft bestaande memberships niet meer.
+| Entra-groepsnaam | Bedrijf | Rol |
+| --- | --- | --- |
+| SG-QHOME-All | QHOME | employee (Medewerker) |
+| SG-TOMME-All | TOMME | employee (Medewerker) |
+| SG-WARCO-All | WARCO | employee (Medewerker) |
+
+Laat `ENTRA_GROUP_MAPPINGS` weg of leeg om deze standaard te gebruiken. Een eerder ingestelde `[]` moet verwijderd worden: die schakelt alle koppelingen expliciet uit. Er zijn hiervoor geen groep-object-ID’s nodig in de portaalconfiguratie.
+
+In Entra → App registrations → Cohvera → Manifest: voeg onderstaande instellingen samen met de bestaande configuratie (behoud andere optional claims en app-rollen):
+
+```json
+{
+  "groupMembershipClaims": "ApplicationGroup",
+  "optionalClaims": {
+    "idToken": [
+      { "name": "groups", "source": null, "essential": false, "additionalProperties": ["cloud_displayname"] }
+    ]
+  }
+}
+```
+
+Wijs de drie bedrijfsgroepen expliciet toe aan de Enterprise Application met Portal.User en zorg voor direct groepslidmaatschap. Portal.Admin blijft via de aparte beheerdersgroep komen. Gebruik unieke namen binnen de toegewezen groepen; Entra staat dubbele groepsnamen toe. De configuratie hierboven geldt voor cloudgroepen. Gesynchroniseerde on-premises groepen moeten exact dezelfde namen via hun passende groepsattribuut meesturen.
+
+De applicatie controleert alleen exacte namen uit de cryptografisch gecontroleerde ID-tokenclaim `groups`, niet uit e-mailadressen of browserinvoer. Naamwijzigingen moeten ook in de configuratie worden aangepast. Als Entra alleen ID’s stuurt bij uitsluitend naamkoppelingen, volgt een specifieke configuratiefout; er wordt geen bedrijf gegokt.
+
+Optioneel kan een JSON-override worden ingesteld met `groupName` of `groupId` per koppeling (nooit beide), bijvoorbeeld:
+
+```dotenv
+ENTRA_GROUP_MAPPINGS='[{"groupName":"SG-TOMME-All","companyCode":"TOMME","roleKey":"employee"}]'
+```
+
+Bedrijfscodes: `COH`, `TOMME`, `QHOME`, `WARCO`. Bedrijfsrollen: `viewer`, `employee`, `manager`, `company-admin`. Bij meerdere rollen voor hetzelfde bedrijf geldt de hoogste in deze volgorde. Eén groep kan meerdere koppelingen hebben. Geen bedrijfsrol geeft Portal.Admin: die blijft apart in Entra toegekend.
+
+Elke geldige login vervangt alle lokale bedrijfstoewijzingen door de overeenkomstige Entra-groepen. Geen passende groep (of geen groepsclaim) betekent geen bedrijfstoegang, ook voor Portal.Admin. Verwijderde groepskoppelingen worden dus bij de volgende login ingetrokken. Oude sessies worden bij opnieuw aanmelden ingetrokken. Reeds actieve sessies blijven anders maximaal hun ingestelde levensduur geldig; dit is geen continue Graph-synchronisatie.
+
+Een expliciet lege lijst (`[]`) geeft geen bedrijven. Ongeldige JSON, onbekende bedrijfs-/rolconfiguratie voor een match en onvolledige groepsclaims door een Microsoft-overagelimiet blokkeren de login. Er is geen Graph-fallback of extra Graph-permissie nodig voor de ondersteunde tokenroute. Configureer mappings en groepsclaim **vóór deployment**, zodat gebruikers na opnieuw aanmelden hun bedrijfstoegang behouden.
+
+Bron: [Microsoft: groepsclaims configureren](https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/how-to-connect-fed-group-claims).
 
 ## Veilige configuratie
 
@@ -77,7 +114,7 @@ Voor lokaal testen met Entra: een afzonderlijk geregistreerde `http://localhost:
 ## Deployment en afhankelijkheden
 
 1. Herstel de DNS A-record `portal.cohvera.be → 84.247.132.149` voordat de publieke callback wordt gebruikt. Bij controle op 28 september gaf de autoritatieve DNS NXDOMAIN terwijl de server met geforceerde hostname wel antwoordde.
-2. Vul de beveiligde serverconfiguratie in en controleer de bestaande accountkoppeling.
+2. Vul de beveiligde serverconfiguratie in.
 3. Bouw de gewijzigde images, voer migraties uit en herstart de diensten met de normale deployprocedure. De database krijgt `PortalSession`, `EntraLoginAttempt` en een samengestelde tenant/object-identiteit. De `/auth/*`-routing vereist ook de gewijzigde Caddyfile.
 4. Test zonder bestaande sessie, met een gewone gebruiker en met een Portal.Admin. Controleer ook rechtstreeks de API, niet alleen verborgen knoppen.
 5. Controleer dat de interface de echte Microsoft-naam toont en geen ontwikkelomgeving meer meldt.
