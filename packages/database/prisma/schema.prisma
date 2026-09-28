@@ -32,11 +32,13 @@ model Company {
   pluginLinks   CompanyPlugin[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  inspections   Inspection[]
 }
 
 model User {
   id            String              @id @default(cuid())
-  entraObjectId String?             @unique
+  entraObjectId String?
+  entraTenantId String?
   email         String              @unique
   displayName   String
   isActive      Boolean             @default(true)
@@ -45,6 +47,8 @@ model User {
   memberships   CompanyMembership[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  sessions      PortalSession[]
+  @@unique([entraTenantId, entraObjectId])
 }
 
 model Role {
@@ -171,4 +175,72 @@ model ProjectTask {
   updatedAt   DateTime @updatedAt
   project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   @@index([projectId, status])
+}
+
+model ToolCatalog {
+  id           String   @id
+  kind         String
+  name         String   @default("")
+  description  String   @default("")
+  href         String   @default("")
+  companyCodes String[]
+  updatedAt    DateTime @updatedAt
+}
+
+model Inspection {
+  id String @id @default(cuid())
+  companyId String
+  version Int @default(1)
+  data Json
+  previousId String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documents InspectionDocument[]
+  events InspectionEvent[]
+  @@index([companyId, updatedAt])
+}
+
+model InspectionDocument {
+  id String @id @default(cuid())
+  inspectionId String
+  name String
+  category String
+  mime String
+  size Int
+  content Bytes
+  createdAt DateTime @default(now())
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  @@index([inspectionId])
+}
+
+model InspectionEvent {
+  id String @id @default(cuid())
+  inspectionId String
+  actor String
+  action String
+  detail String
+  createdAt DateTime @default(now())
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  @@index([inspectionId, createdAt])
+}
+
+model PortalSession {
+  tokenHash String @id
+  userId String
+  roles String[]
+  tenantId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+}
+
+model EntraLoginAttempt {
+  tokenHash String @id
+  state String
+  nonce String
+  verifier String
+  expiresAt DateTime
+  @@index([expiresAt])
 }

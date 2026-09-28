@@ -47,8 +47,9 @@ export const tools: ToolModule[] = [
   {
     slug: "inspections",
     name: "Keuringen",
+    href: "/tools/inspections",
     category: "Quality & Compliance",
-    description: "Centrale planning en opvolging van elektrische keuringen, attesten, opmerkingen en herkeuringen.",
+    description: "Beheer keuringsdossiers, planning, rapporten en periodieke opvolging binnen Cohvera.",
     status: "MVP",
     actions: ["Keuring aanvragen", "Attest registreren", "Herkeuring plannen"],
     workflow: ["Aanvraag", "Planning", "Keuring", "Attest", "Opvolging"]

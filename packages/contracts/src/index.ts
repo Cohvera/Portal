@@ -20,3 +20,5 @@ export interface DomainEvent<T = unknown> {
   companyId: CompanyId;
   payload: T;
 }
+
+export * from "./inspections";

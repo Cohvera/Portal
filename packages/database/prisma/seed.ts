@@ -26,9 +26,9 @@ async function main() {
   })));
 
   const rolePresets = [
-    {key:"manager",name:"Manager",description:"Projecten en taken beheren, operationele gegevens raadplegen.",permissions:["companies.read","companies.switch","projects.read","projects.manage","tasks.read","tasks.manage","plugins.read","notifications.read","audit.read"]},
-    {key:"employee",name:"Medewerker",description:"Projecten bekijken en dagelijkse taken opvolgen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","tasks.manage","plugins.read","notifications.read"]},
-    {key:"viewer",name:"Lezer",description:"Gegevens bekijken zonder wijzigingen aan te brengen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","plugins.read","notifications.read"]}
+    {key:"manager",name:"Manager",description:"Projecten en taken beheren, operationele gegevens raadplegen.",permissions:["companies.read","companies.switch","projects.read","projects.manage","tasks.read","tasks.manage","plugins.read","notifications.read","audit.read","inspections.read","inspections.write"]},
+    {key:"employee",name:"Medewerker",description:"Projecten bekijken en dagelijkse taken opvolgen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","tasks.manage","plugins.read","notifications.read","inspections.read"]},
+    {key:"viewer",name:"Lezer",description:"Gegevens bekijken zonder wijzigingen aan te brengen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","plugins.read","notifications.read","inspections.read"]}
   ];
   for (const preset of rolePresets) {
     const role = await prisma.role.upsert({where:{key:preset.key},update:{},create:{key:preset.key,name:preset.name,description:preset.description}});
@@ -38,11 +38,14 @@ async function main() {
     }
   }
 
+  if (process.env.AUTH_MODE === "development") {
   const user = await prisma.user.upsert({ where: { email: "remko@cohvera.be" }, update: { displayName: "Remko" }, create: { email: "remko@cohvera.be", displayName: "Remko" } });
   await Promise.all(companies.map((company) => prisma.companyMembership.upsert({
     where: { userId_companyId: { userId: user.id, companyId: company.id } },
-    update: { roleId: adminRole.id }, create: { userId: user.id, companyId: company.id, roleId: adminRole.id }
+    update: {}, create: { userId: user.id, companyId: company.id, roleId: adminRole.id }
   })));
+
+  }
 
   for (const company of companies) {
     for (const [suffix, name, customer] of [["launch", "Projectopstart & planning", "Interne werking"], ["delivery", "Oplevering residentie Parkzicht", "Residentie Parkzicht"]]) {

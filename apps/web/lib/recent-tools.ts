@@ -1,3 +1,4 @@
+import { entryCompanies, readCatalog, toolMatchesCompany } from "./tool-companies";
 import { tools } from "./tools";
 
 export const RECENT_TOOLS_EVENT = "cohvera:recent-tools";
@@ -26,12 +27,12 @@ export function recordToolOpen(companyCode: string, id: string) {
   } catch { /* Opening a tool must still work when browser storage is unavailable. */ }
 }
 
-export function getRecentTools(companyCode: string): RecentTool[] {
-  const catalog = new Map(tools.map(tool => [tool.slug, {name: tool.name, category: tool.category, description: tool.description, href: tool.href || `/tools/${tool.slug}`} ]));
+export async function getRecentTools(companyCode: string): Promise<RecentTool[]> {
+  const {selections,entries}=await readCatalog();
+  const catalog = new Map(tools.filter(tool=>toolMatchesCompany(tool.slug,companyCode,selections)).map(tool => [tool.slug, {name: tool.name, category: tool.category, description: tool.description, href: tool.href || `/tools/${tool.slug}`} ]));
   try {
-    const entries: unknown = JSON.parse(localStorage.getItem("cohvera.catalog.entries.v1") || "[]");
     if (Array.isArray(entries)) for (const entry of entries) {
-      if (entry?.companyCode === companyCode && entry.kind === "tool" && typeof entry.id === "string" && typeof entry.name === "string" && typeof entry.description === "string" && typeof entry.href === "string" && /^https?:\/\//i.test(entry.href)) {
+      if (entry && entryCompanies(entry).includes(companyCode) && entry.kind === "tool" && typeof entry.id === "string" && typeof entry.name === "string" && typeof entry.description === "string" && typeof entry.href === "string" && /^https?:\/\//i.test(entry.href)) {
         catalog.set(`custom:${entry.id}`, {name: entry.name, description: entry.description, category: "Eigen tools", href: entry.href});
       }
     }

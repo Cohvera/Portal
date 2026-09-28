@@ -1,0 +1,14 @@
+-- Verified NAS destinations, 2026-09-25. These are links, not SSO or data imports.
+-- Keep stable IDs and preserve any existing administrator customizations.
+INSERT INTO "ToolCatalog" ("id", "kind", "name", "description", "href", "companyCodes", "updatedAt")
+VALUES
+('tomme-projectsheets', 'tool', 'ProjectSheets', 'Projectdossiers, werkfiches, taken en werffoto’s beheren. Via bedrijfsnetwerk of VPN; de eigen Tomme-login blijft gelden.', 'https://www.tomme-energie.lan/projectsheets/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-keuringen', 'tool', 'Tomme Keuringen', 'Keuringen voorbereiden en keuringsdossiers opvolgen in het bestaande Tomme-portaal. Bereikbaar via bedrijfsnetwerk of VPN.', 'https://www.tomme-energie.lan/keuringen/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-onderhoud', 'tool', 'Onderhoudsmodule', 'Installaties, onderhoudsaanvragen en technische documenten beheren. Module in ontwikkeling. Via bedrijfsnetwerk of VPN; eigen toegangsrechten blijven gelden.', 'https://www.tomme-energie.lan/onderhoudsmodule/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-marketing', 'tool', 'Tomme Marketing', 'Projectfoto’s selecteren en marketingteksten, cases en exports voorbereiden. Via bedrijfsnetwerk of VPN; eigen toegangsrechten blijven gelden.', 'https://www.tomme-energie.lan/tomme-marketing/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-reviews', 'tool', 'Reviews', 'Klantreviews en de bijbehorende opvolging beheren. Via bedrijfsnetwerk of VPN; eigen toegangsrechten blijven gelden.', 'https://www.tomme-energie.lan/reviews/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-fieldfotos', 'tool', 'Fieldfoto’s', 'Werffoto’s ordenen en aan projecten koppelen. API bereikbaar; de pagina vereist een aparte Tomme-login. Via bedrijfsnetwerk of VPN.', 'https://www.tomme-energie.lan/fieldfotos/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-stock', 'tool', 'T-Stock · WMS', 'Stockportaal met Plenion-export. Vereist Tomme-login; werking na login niet geverifieerd. De centrale cockpit meldt een verouderde snapshot. Via bedrijfsnetwerk of VPN.', 'https://www.tomme-energie.lan/t-stock/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-plenion-overlayer', 'tool', 'Plenion Overlayer', 'Offertes en commerciële opvolging bovenop Plenion-data. Database bereikbaar; mailbox en zonnepanelenbron nog niet verbonden. Via bedrijfsnetwerk of VPN; eigen login blijft gelden.', 'https://www.tomme-energie.lan/plenion-overlayer/', ARRAY['TOMME'], CURRENT_TIMESTAMP),
+('tomme-ai-cockpit', 'integration', 'Tomme AI & integratiecockpit', 'Centrale toolregistratie en systeemstatus van het Tomme-intranet. Bereikbaar, maar health meldt gedeeltelijke problemen. Via bedrijfsnetwerk of VPN; eigen login blijft gelden.', 'https://www.tomme-energie.lan/ai/', ARRAY['TOMME'], CURRENT_TIMESTAMP)
+ON CONFLICT ("id") DO NOTHING;

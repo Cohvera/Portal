@@ -8,7 +8,9 @@
     "start": "node dist/main.js",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "node --test",
+    "test:inspections": "tsx --test src/inspections/*.test.ts",
+    "test:auth": "tsx --test src/auth/*.test.ts"
   },
   "dependencies": {
     "@cohvera/auth": "workspace:*",
@@ -19,8 +21,14 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "openid-client": "^6",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
-  "devDependencies": { "@types/node": "^22.10.0", "tsx": "^4.19.2", "typescript": "^5.7.2" }
+  "devDependencies": {
+    "@types/express": "^5",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
 }

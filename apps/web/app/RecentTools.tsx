@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { TOOL_COMPANIES_EVENT } from "../lib/tool-companies";
 import { useEffect, useState } from "react";
 import { getRecentTools, RECENT_TOOLS_EVENT, type RecentTool } from "../lib/recent-tools";
 import { useCompany } from "./PortalShell";
@@ -9,14 +10,18 @@ export default function RecentTools() {
   const {companyCode} = useCompany();
   const [snapshot,setSnapshot] = useState<{companyCode: string; tools: RecentTool[]}>({companyCode:"",tools:[]});
   useEffect(() => {
-    const refresh = () => setSnapshot({companyCode, tools:getRecentTools(companyCode)});
+    let active=true;let version=0;
+    const refresh = async () => {const current=++version;try{const tools=await getRecentTools(companyCode);if(active&&version===current)setSnapshot({companyCode,tools});}catch{if(active&&version===current)setSnapshot({companyCode,tools:[]});}};
     refresh();
     window.addEventListener(RECENT_TOOLS_EVENT,refresh);
     window.addEventListener("storage",refresh);
+    window.addEventListener(TOOL_COMPANIES_EVENT,refresh);
     window.addEventListener("focus",refresh);
     return () => {
+      active=false;
       window.removeEventListener(RECENT_TOOLS_EVENT,refresh);
       window.removeEventListener("storage",refresh);
+      window.removeEventListener(TOOL_COMPANIES_EVENT,refresh);
       window.removeEventListener("focus",refresh);
     };
   },[companyCode]);

@@ -31,6 +31,7 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cohvera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cohvera}
+      AUTH_MODE: ${AUTH_MODE:-entra}
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,9 +47,14 @@ services:
       PORT: 4000
       DATABASE_URL: postgresql://${POSTGRES_USER:-cohvera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cohvera}
       REDIS_URL: redis://redis:6379
-      AUTH_MODE: ${AUTH_MODE:-development}
+      AUTH_MODE: ${AUTH_MODE:-entra}
       WEB_URL: https://${PORTAL_DOMAIN}
-      PLUGIN_ADMIN_TOKEN: ${PLUGIN_ADMIN_TOKEN:?Set PLUGIN_ADMIN_TOKEN in .env}
+      PLUGIN_ADMIN_TOKEN: ${PLUGIN_ADMIN_TOKEN:-}
+      ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-https://${PORTAL_DOMAIN}/auth/callback}
+      ENTRA_SESSION_MINUTES: ${ENTRA_SESSION_MINUTES:-15}
       AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
       AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
       AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
@@ -70,7 +76,7 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: /api
-      AUTH_MODE: ${AUTH_MODE:-development}
+      AUTH_MODE: ${AUTH_MODE:-entra}
     depends_on:
       api:
         condition: service_healthy

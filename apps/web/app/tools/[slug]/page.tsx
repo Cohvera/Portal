@@ -4,7 +4,7 @@ import ToolPageClient from "./ToolPageClient";
 import { findTool, tools } from "../../../lib/tools";
 
 export function generateStaticParams() {
-  return tools.map((tool) => ({ slug: tool.slug }));
+  return tools.filter((tool) => tool.slug !== "inspections").map((tool) => ({ slug: tool.slug }));
 }
 
 export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
