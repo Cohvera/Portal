@@ -20,7 +20,8 @@ type Account = {
   groups: Mapping[];
   receivedGroups: string[] | null;
   groupsSynced: boolean;
-  groupsClaimPresent: boolean;
+  groupsClaimPresent: boolean | null;
+  loginApplication: { tenantId: string; clientId: string; claimNames: string[] } | null;
   memberships: {
     company: { name: string; code: string };
     role: { name: string };
@@ -183,7 +184,7 @@ export default function AccountsPage() {
                     Bedrijfstoegang nog niet via Entra-groepen gesynchroniseerd.
                   </p>
                 )}
-                {u.groupsSynced && !u.groupsClaimPresent && (
+                {u.groupsSynced && u.groupsClaimPresent === false && (
                   <p className="muted">
                     Microsoft stuurde bij de laatste aanmelding geen
                     groepsclaim.
@@ -198,6 +199,12 @@ export default function AccountsPage() {
                     Geregistreerd:{" "}
                     {new Date(u.createdAt).toLocaleDateString("nl-BE")}
                   </p>
+                  {u.loginApplication && <details><summary>Aanmeldconfiguratie controleren</summary>
+                    <p>Application (client) ID: {u.loginApplication.clientId}</p>
+                    <p>Directory (tenant) ID: {u.loginApplication.tenantId}</p>
+                    <p>Ontvangen veldnamen: {u.loginApplication.claimNames.join(", ")}</p>
+                    <p className="muted">Vergelijk deze app met de App Registration die je in Entra hebt ingesteld. Alleen veldnamen worden getoond, geen tokens of secrets.</p>
+                  </details>}
                   <p><strong>Door Microsoft meegestuurde groepen:</strong></p>
                   {u.receivedGroups == null ? <p className="muted">Nog niet geregistreerd. Meld opnieuw aan nadat deze versie is uitgerold.</p> : u.receivedGroups.length ? <ul>{u.receivedGroups.map(g => <li key={g}>{g}</li>)}</ul> : <p>Geen groepen ontvangen.</p>}
                   <p><strong>Herkende bedrijfskoppelingen:</strong></p>

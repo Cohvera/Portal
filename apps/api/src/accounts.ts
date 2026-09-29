@@ -47,6 +47,7 @@ export class AccountsController {
               groups?: unknown[];
               receivedGroups?: string[];
               groupsClaimPresent?: boolean;
+              loginApplication?: { tenantId: string; clientId: string; claimNames: string[] };
             }
           | undefined;
         return {
@@ -56,7 +57,8 @@ export class AccountsController {
           groups: metadata?.groups || [],
           receivedGroups: metadata?.receivedGroups ?? null,
           groupsSynced: Array.isArray(metadata?.groups),
-          groupsClaimPresent: metadata?.groupsClaimPresent ?? false,
+          groupsClaimPresent: metadata?.groupsClaimPresent ?? null,
+          loginApplication: metadata?.loginApplication ?? null,
         };
       }),
     };
