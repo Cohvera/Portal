@@ -105,3 +105,18 @@ test("names: requested company groups grant employee only with exact verified na
     /group_configuration/,
   );
 });
+
+test("actual env defaults and explicit empty override", () => {
+ const previous = process.env.ENTRA_GROUP_MAPPINGS;
+ try {
+  for (const value of [undefined, ""]) {
+   if (value === undefined) delete process.env.ENTRA_GROUP_MAPPINGS;
+   else process.env.ENTRA_GROUP_MAPPINGS = value;
+   assert.deepEqual(companyAccess({groups:["SG-QHOME-All"]}).assignments.map(m=>[m.companyCode,m.roleKey]),[["QHOME","employee"]]);
+  }
+  process.env.ENTRA_GROUP_MAPPINGS="[]";
+  const access=companyAccess({groups:["SG-QHOME-All"]});
+  assert.deepEqual(access.assignments,[]);
+  assert.deepEqual(access.receivedGroups,["SG-QHOME-All"]);
+ } finally { if(previous===undefined) delete process.env.ENTRA_GROUP_MAPPINGS; else process.env.ENTRA_GROUP_MAPPINGS=previous; }
+});

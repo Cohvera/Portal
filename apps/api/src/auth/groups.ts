@@ -105,6 +105,7 @@ export function companyAccess(
       assignments.set(mapping.companyCode, mapping);
   }
   return {
+    receivedGroups: [...groups],
     matched,
     assignments: [...assignments.values()],
     groupsClaimPresent: Array.isArray(claims.groups),

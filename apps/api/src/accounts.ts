@@ -45,6 +45,7 @@ export class AccountsController {
           | {
               roles?: string[];
               groups?: unknown[];
+              receivedGroups?: string[];
               groupsClaimPresent?: boolean;
             }
           | undefined;
@@ -53,6 +54,7 @@ export class AccountsController {
           lastLoginAt: login?.createdAt ?? null,
           portalRoles: metadata?.roles || [],
           groups: metadata?.groups || [],
+          receivedGroups: metadata?.receivedGroups ?? null,
           groupsSynced: Array.isArray(metadata?.groups),
           groupsClaimPresent: metadata?.groupsClaimPresent ?? false,
         };

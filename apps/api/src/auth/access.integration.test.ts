@@ -242,6 +242,21 @@ test(
         ),
         /group_configuration/,
       );
+      // Regression: even Portal.Admin with only Q-Home must lose old company access.
+      await prisma.$transaction(tx => syncCompanyAccess(tx, ids[2], companyAccess(
+        { groups: ["SG-QHOME-All"] },
+        groupMappings(JSON.stringify([
+          { groupName: "SG-QHOME-All", companyCode: "QHOME", roleKey: "employee" },
+          { groupName: "SG-TOMME-All", companyCode: "TOMME", roleKey: "employee" },
+          { groupName: "SG-WARCO-All", companyCode: "WARCO", roleKey: "employee" },
+        ])),
+      )));
+      const qhomeIdentity = await (await req("/auth/me", "admin")).json();
+      assert.deepEqual(qhomeIdentity.companies.map((c: {code: string}) => c.code), ["QHOME"]);
+      assert.equal(qhomeIdentity.businessAccess[0].businessAdmin, false);
+      assert.equal((await req("/companies/QHOME/projects", "admin")).status, 200);
+      for (const code of ["TOMME", "WARCO", "COH"])
+        assert.equal((await req(`/companies/${code}/projects`, "admin")).status, 403);
       // Real logout revokes the opaque session, independent of the Microsoft logout redirect.
       const logout = await req("/auth/logout", "admin", "POST", {});
       assert.equal(logout.status, 303);

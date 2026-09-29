@@ -202,7 +202,7 @@ export class AuthController {
               action: "auth.login",
               entityType: "user",
               entityId: user.id,
-              metadata: { provider: "entra", roles: identity.roles, groups: access.matched, groupsClaimPresent: access.groupsClaimPresent },
+              metadata: { provider: "entra", roles: identity.roles, groups: access.matched, receivedGroups: access.receivedGroups, groupsClaimPresent: access.groupsClaimPresent },
             },
           });
       });

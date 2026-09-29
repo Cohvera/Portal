@@ -18,6 +18,7 @@ type Account = {
   lastLoginAt: string | null;
   portalRoles: string[];
   groups: Mapping[];
+  receivedGroups: string[] | null;
   groupsSynced: boolean;
   groupsClaimPresent: boolean;
   memberships: {
@@ -197,6 +198,9 @@ export default function AccountsPage() {
                     Geregistreerd:{" "}
                     {new Date(u.createdAt).toLocaleDateString("nl-BE")}
                   </p>
+                  <p><strong>Door Microsoft meegestuurde groepen:</strong></p>
+                  {u.receivedGroups == null ? <p className="muted">Nog niet geregistreerd. Meld opnieuw aan nadat deze versie is uitgerold.</p> : u.receivedGroups.length ? <ul>{u.receivedGroups.map(g => <li key={g}>{g}</li>)}</ul> : <p>Geen groepen ontvangen.</p>}
+                  <p><strong>Herkende bedrijfskoppelingen:</strong></p>
                   {u.groups.map((g, i) => (
                     <p key={i}>
                       <strong>{g.name}</strong> → {g.companyCode} · {g.roleKey}

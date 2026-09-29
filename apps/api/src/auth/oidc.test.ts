@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import * as oidc from "openid-client";
 import { identityClaims, isPortalAdmin, isPortalUser } from "./policy";
+import { companyAccess, defaultGroupMappings, groupMappings } from "./groups";
 const tenant = "11111111-1111-4111-8111-111111111111",
   clientId = "22222222-2222-4222-8222-222222222222",
   objectId = "33333333-3333-4333-8333-333333333333";
@@ -149,4 +150,13 @@ test("Entra-configuratie weigert onveilige callbacks en onbegrensde sessies",asy
   process.env.NODE_ENV="development";assert.equal(entraSettings().secure,false);
   process.env.ENTRA_SESSION_MINUTES="999";assert.throws(()=>entraSettings());
  }finally{for(const k of keys){if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k];}}
+});
+
+test("signed Q-Home token retains groups and maps only QHOME employee", async () => {
+ const result = await grant({groups:["SG-QHOME-All"]});
+ const claims = result.claims()!;
+ identityClaims(claims, tenant);
+ const access = companyAccess(claims, groupMappings(JSON.stringify(defaultGroupMappings)));
+ assert.deepEqual(access.receivedGroups,["SG-QHOME-All"]);
+ assert.deepEqual(access.assignments.map(m=>[m.companyCode,m.roleKey]),[["QHOME","employee"]]);
 });
