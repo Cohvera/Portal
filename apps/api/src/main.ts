@@ -11,6 +11,7 @@ import {
   portalAdmin,
 } from "./auth/context";
 import { requestContext } from "./auth/session";
+import { ProjectReferencesController } from "./project-references";
 import { AccountsController } from "./accounts";
 import { authMode } from "./auth/config";
 import type { Request, Response, NextFunction } from "express";
@@ -402,6 +403,7 @@ class AppController {
     InspectionsController,
     AppController,
     ProjectsController,
+    ProjectReferencesController,
     CatalogController,
     AdminAccessController,
   ],

@@ -243,20 +243,126 @@ test(
         /group_configuration/,
       );
       // Regression: even Portal.Admin with only Q-Home must lose old company access.
-      await prisma.$transaction(tx => syncCompanyAccess(tx, ids[2], companyAccess(
-        { groups: ["SG-QHOME-All"] },
-        groupMappings(JSON.stringify([
-          { groupName: "SG-QHOME-All", companyCode: "QHOME", roleKey: "employee" },
-          { groupName: "SG-TOMME-All", companyCode: "TOMME", roleKey: "employee" },
-          { groupName: "SG-WARCO-All", companyCode: "WARCO", roleKey: "employee" },
-        ])),
-      )));
+      await prisma.$transaction((tx) =>
+        syncCompanyAccess(
+          tx,
+          ids[2],
+          companyAccess(
+            { groups: ["SG-QHOME-All"] },
+            groupMappings(
+              JSON.stringify([
+                {
+                  groupName: "SG-QHOME-All",
+                  companyCode: "QHOME",
+                  roleKey: "employee",
+                },
+                {
+                  groupName: "SG-TOMME-All",
+                  companyCode: "TOMME",
+                  roleKey: "employee",
+                },
+                {
+                  groupName: "SG-WARCO-All",
+                  companyCode: "WARCO",
+                  roleKey: "employee",
+                },
+              ]),
+            ),
+          ),
+        ),
+      );
       const qhomeIdentity = await (await req("/auth/me", "admin")).json();
-      assert.deepEqual(qhomeIdentity.companies.map((c: {code: string}) => c.code), ["QHOME"]);
+      assert.deepEqual(
+        qhomeIdentity.companies.map((c: { code: string }) => c.code),
+        ["QHOME"],
+      );
       assert.equal(qhomeIdentity.businessAccess[0].businessAdmin, false);
-      assert.equal((await req("/companies/QHOME/projects", "admin")).status, 200);
+      assert.equal(
+        (await req("/companies/QHOME/projects", "admin")).status,
+        200,
+      );
       for (const code of ["TOMME", "WARCO", "COH"])
-        assert.equal((await req(`/companies/${code}/projects`, "admin")).status, 403);
+        assert.equal(
+          (await req(`/companies/${code}/projects`, "admin")).status,
+          403,
+        );
+      // A Q-Home employee creates a project; the warehouse contract recalls the same ID.
+      const input = {
+        name: "Warehouse reference test",
+        owner: "Nieuwe collega",
+        status: "Actief",
+        statusColor: "#2563eb",
+      };
+      const created = await req(
+        "/companies/QHOME/projects",
+        "admin",
+        "POST",
+        input,
+      );
+      assert.equal(created.status, 201);
+      const project = await created.json();
+      try {
+        assert.equal(
+          (
+            await req(
+              `/companies/QHOME/projects/${project.id}`,
+              "admin",
+              "PATCH",
+              input,
+            )
+          ).status,
+          403,
+        );
+        const reference = await req(
+          `/v1/companies/QHOME/projects/${project.id}`,
+          "admin",
+        );
+        assert.equal(reference.status, 200);
+        assert.deepEqual(await reference.json(), {
+          id: project.id,
+          companyCode: "QHOME",
+          ...input,
+        });
+        const page = await (
+          await req(
+            "/v1/companies/QHOME/projects?q=Warehouse%20reference%20test",
+            "admin",
+          )
+        ).json();
+        assert.equal(page.version, 1);
+        assert.ok(
+          page.projects.some((p: { id: string }) => p.id === project.id),
+        );
+        assert.equal(
+          (await req(`/v1/companies/TOMME/projects/${project.id}`, "admin"))
+            .status,
+          403,
+        );
+        assert.equal(
+          (await req(`/v1/companies/TOMME/projects/${project.id}`, "business"))
+            .status,
+          404,
+        );
+        assert.equal((await req("/v1/companies/QHOME/projects")).status, 401);
+        assert.equal(
+          (await req("/companies/TOMME/projects", "user", "POST", input))
+            .status,
+          401,
+        );
+        // Renaming does not break the reference; completed projects remain retrievable.
+        await prisma.project.update({
+          where: { id: project.id },
+          data: { name: "Renamed warehouse reference", status: "Afgerond" },
+        });
+        const renamed = await (
+          await req(`/v1/companies/QHOME/projects/${project.id}`, "admin")
+        ).json();
+        assert.equal(renamed.id, project.id);
+        assert.equal(renamed.name, "Renamed warehouse reference");
+        assert.equal(renamed.status, "Afgerond");
+      } finally {
+        await prisma.project.delete({ where: { id: project.id } });
+      }
       // Real logout revokes the opaque session, independent of the Microsoft logout redirect.
       const logout = await req("/auth/logout", "admin", "POST", {});
       assert.equal(logout.status, 303);

@@ -56,7 +56,12 @@ export class PortalGuard implements CanActivate {
       else if (path.includes("/tasks"))
         permission = write ? "tasks.manage" : "tasks.read";
       else if (path.includes("/projects"))
-        permission = write ? "projects.manage" : "projects.read";
+        permission =
+          req.method === "POST" && path.endsWith("/projects")
+            ? "projects.create"
+            : write
+              ? "projects.manage"
+              : "projects.read";
       else if (path.endsWith("/audit")) permission = "audit.read";
       else if (path.endsWith("/notifications"))
         permission = "notifications.read";

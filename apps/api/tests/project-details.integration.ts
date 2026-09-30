@@ -9,7 +9,7 @@ test("projects validate fields, persist edits and isolate companies", {skip: !ba
     return {status:response.status,data:await response.json()};
   };
   const input = {name:"Integration test project",owner:"Milan",status:"Gepland",statusColor:"#64748b",dueDate:"2026-10-15"};
-  for (const invalid of [{name:" "},{name:"x".repeat(201)},{status:"Unknown"},{statusColor:"red"},{owner:"Unknown"},{dueDate:"2026-02-30"}]) {
+  for (const invalid of [{name:" "},{name:"x".repeat(201)},{status:"Unknown"},{statusColor:"red"},{owner:" "},{dueDate:"2026-02-30"}]) {
     assert.equal((await call("/companies/COH/projects","POST",{...input,...invalid})).status,400);
   }
   assert.equal((await call("/companies/UNKNOWN/projects","POST",input)).status,404);

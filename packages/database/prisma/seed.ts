@@ -3,7 +3,7 @@ import { PrismaClient, PluginState } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const permissions = [
-  "projects.read", "projects.manage", "tasks.read", "tasks.manage",
+  "projects.read", "projects.create", "projects.manage", "tasks.read", "tasks.manage",
   "portal.admin", "companies.read", "companies.switch", "users.read", "users.manage",
   "plugins.read", "plugins.manage", "notifications.read", "audit.read",
   "inspections.read", "inspections.write", "solar.read", "solar.write",
@@ -26,8 +26,8 @@ async function main() {
   })));
 
   const rolePresets = [
-    {key:"manager",name:"Manager",description:"Projecten en taken beheren, operationele gegevens raadplegen.",permissions:["companies.read","companies.switch","projects.read","projects.manage","tasks.read","tasks.manage","plugins.read","notifications.read","audit.read","inspections.read","inspections.write"]},
-    {key:"employee",name:"Medewerker",description:"Projecten bekijken en dagelijkse taken opvolgen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","tasks.manage","plugins.read","notifications.read","inspections.read"]},
+    {key:"manager",name:"Manager",description:"Projecten en taken beheren, operationele gegevens raadplegen.",permissions:["companies.read","companies.switch","projects.read","projects.create","projects.manage","tasks.read","tasks.manage","plugins.read","notifications.read","audit.read","inspections.read","inspections.write"]},
+    {key:"employee",name:"Medewerker",description:"Projecten bekijken en dagelijkse taken opvolgen.",permissions:["companies.read","companies.switch","projects.read","projects.create","tasks.read","tasks.manage","plugins.read","notifications.read","inspections.read"]},
     {key:"viewer",name:"Lezer",description:"Gegevens bekijken zonder wijzigingen aan te brengen.",permissions:["companies.read","companies.switch","projects.read","tasks.read","plugins.read","notifications.read","inspections.read"]}
   ];
   for (const preset of rolePresets) {

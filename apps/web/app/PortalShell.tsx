@@ -25,6 +25,7 @@ type Identity = {
   }[];
 };
 const CompanyContext = createContext({
+  displayName: "",
   companies: [] as Company[],
   companyCode: "",
   canManageCatalog: false,
@@ -157,6 +158,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   return (
     <CompanyContext.Provider
       value={{
+        displayName: identity.displayName,
         companies: identity.companies,
         companyCode,
         canManageCatalog: identity.canManageCatalog,
