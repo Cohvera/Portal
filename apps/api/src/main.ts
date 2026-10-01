@@ -422,6 +422,8 @@ export async function configuredApp() {
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Cache-Control", "no-store");
     if (publicAuthPath(req.path.replace(/\/$/, ""))) return next();
+    // Bearer requests are verified independently in the guard, never as a user session.
+    if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined) return next();
     void requestContext(req)
       .then((ctx) => authContext.run(ctx, () => next()))
       .catch(() =>

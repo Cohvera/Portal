@@ -18,9 +18,9 @@ Warehouse moet de combinatie bron `cohvera` + `companyCode` + `id` als referenti
 
 ## Wat is al werkend en wat volgt later?
 
-Aanmaken in het portaal en de API om projecten per bedrijf op te halen zijn geïmplementeerd. De endpoints vereisen nu een geldige portaalsessie met `projects.read` voor het bedrijf; ze zijn niet openbaar. De tests controleren de koppeling van een nieuw project met zijn API-referentie en weigering van toegang tot andere bedrijven.
+Aanmaken in het portaal en de API om projecten per bedrijf op te halen zijn geïmplementeerd. De endpoints vereisen een geldige portaalsessie met `projects.read` of een toegestaan Entra-applicatietoken; ze zijn niet openbaar. De tests controleren de koppeling van een nieuw project met zijn API-referentie en weigering van toegang tot andere bedrijven.
 
-De bestaande externe warehousetool is nog niet aangepast en haalt deze projecten nog niet automatisch op. Bij de integratie bouwen we daar de projectkeuze en een passende authenticatie tussen Warehouse en Cohvera (bijvoorbeeld een beperkte service-identiteit). Deel geen browsercookie als vaste servercredential. Er is nog geen achtergrondsync, service-token of toekenning van API-toegang aan de externe tool geconfigureerd.
+De bestaande externe warehousetool is nog niet aangepast en haalt deze projecten nog niet automatisch op. De Cohvera-kant ondersteunt applicatie-authenticatie; zie [Warehouse-authenticatie](warehouse-authenticatie.md). De Entra-apps en serverallowlist moeten nog ingesteld worden, en Warehouse moet de tokenaanvraag en projectkeuze implementeren. Er is geen achtergrondsync.
 
 ## Uitrollen
 

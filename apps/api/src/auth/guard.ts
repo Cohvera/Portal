@@ -3,10 +3,15 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  UnauthorizedException,
 } from "@nestjs/common";
 import type { Request } from "express";
 import { context, membership, portalAdmin } from "./context";
 import { publicOrigin } from "./config";
+import { verifyWarehouseKey } from "./warehouse-key";
+import { verifyServiceToken } from "./service";
+import { ProjectReferencesController } from "../project-references";
+import { prisma } from "@cohvera/database";
 const publicPaths = new Set([
   "/health",
   "/auth/config",
@@ -16,10 +21,41 @@ const publicPaths = new Set([
 export const publicAuthPath = (path: string) => publicPaths.has(path);
 @Injectable()
 export class PortalGuard implements CanActivate {
-  canActivate(exec: ExecutionContext) {
+  async canActivate(exec: ExecutionContext) {
     const req = exec.switchToHttp().getRequest<Request>();
     const path = req.path.replace(/\/$/, "") || "/";
     if (publicAuthPath(path)) return true;
+    if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined) {
+      if (req.headers.authorization !== undefined && req.headers["x-warehouse-key"] !== undefined)
+        throw new UnauthorizedException("Gebruik één authenticatiemethode.");
+      let service: { companyCodes: string[] };
+      if (req.headers["x-warehouse-key"] !== undefined) {
+        service = verifyWarehouseKey(req.headers["x-warehouse-key"]);
+      } else {
+        const header = req.headers.authorization!;
+        const match = /^Bearer ([A-Za-z0-9_.-]+)$/i.exec(header);
+        if (!match || header.length > 32768)
+          throw new UnauthorizedException("Gebruik een geldig Bearer-token.");
+        service = await verifyServiceToken(match[1]);
+      }
+      const code = req.params.companyCode;
+      if (
+        exec.getClass() !== ProjectReferencesController ||
+        !["GET", "HEAD"].includes(req.method) ||
+        typeof code !== "string" ||
+        !service.companyCodes.includes(code)
+      )
+        throw new ForbiddenException(
+          "Deze applicatie mag alleen projecten van toegewezen bedrijven lezen.",
+        );
+      const company = await prisma.company.findUnique({
+        where: { code },
+        select: { isActive: true },
+      });
+      if (!company?.isActive)
+        throw new ForbiddenException("Geen toegang tot dit bedrijf.");
+      return true;
+    }
     const ctx = context();
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
       const origins =

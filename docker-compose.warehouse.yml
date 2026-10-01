@@ -1,0 +1,12 @@
+# Optional shared network; create once: docker network create cohvera-warehouse
+services:
+  api:
+    networks:
+      default:
+      warehouse:
+        aliases:
+          - cohvera-projects-api
+networks:
+  warehouse:
+    external: true
+    name: cohvera-warehouse
