@@ -11,7 +11,9 @@ import { useCompany } from "../PortalShell";
 export default function ProjectsPage() {
   const { projects, loading, error, refresh, url, companyCode } = useProjects();
   const { companies, can, displayName } = useCompany();
-  const creatable = can("projects.create");
+  const projectCompanies = companies.filter((company) => can("projects.create", company.code));
+  const creatable = projectCompanies.length > 0;
+  const [targetCompany, setTargetCompany] = useState("");
   const writable = can("projects.manage");
   const dialog = useRef<HTMLDialogElement>(null);
   const [formVersion, setFormVersion] = useState(0);
@@ -30,6 +32,7 @@ export default function ProjectsPage() {
   function open(project: Project | null = null) {
     setFormVersion((v) => v + 1);
     setEditing(project);
+    setTargetCompany(project ? companyCode : projectCompanies.find((c) => c.code === companyCode)?.code || projectCompanies[0]?.code || "");
     setStatus(project?.status || "Gepland");
     setColor(project?.statusColor || projectStatuses.Gepland);
     setFormError("");
@@ -44,12 +47,16 @@ export default function ProjectsPage() {
       setFormError("Vul een titel in.");
       return;
     }
+    if (!editing && !projectCompanies.some((c) => c.code === targetCompany)) {
+      setFormError("Kies een bedrijf waarvoor je projecten mag aanmaken.");
+      return;
+    }
     setBusy(true);
     setFormError("");
     setNotice("");
     setRefreshError("");
     try {
-      await request(`${url}${editing ? `/${editing.id}` : ""}`, {
+      await request(editing ? `${url}/${editing.id}` : `/api/companies/${encodeURIComponent(targetCompany)}/projects`, {
         method: editing ? "PATCH" : "POST",
         body: JSON.stringify({
           name,
@@ -60,7 +67,7 @@ export default function ProjectsPage() {
         }),
       });
       dialog.current?.close();
-      setNotice(editing ? "Project bijgewerkt." : "Project aangemaakt.");
+      setNotice(editing ? "Project bijgewerkt." : `Project aangemaakt bij ${companies.find((c) => c.code === targetCompany)?.name || targetCompany}.${targetCompany !== companyCode ? " Kies dit bedrijf linksboven om het project te bekijken." : ""}`);
       try {
         await refresh();
       } catch {
@@ -174,8 +181,8 @@ export default function ProjectsPage() {
           <header className="section-heading">
             <div>
               <p className="eyebrow">
-                {companies.find((c) => c.code === companyCode)?.name ||
-                  companyCode}
+                {companies.find((c) => c.code === targetCompany)?.name ||
+                  targetCompany}
               </p>
               <h2 id="project-dialog-title">
                 {editing ? "Project bewerken" : "Nieuw project"}
@@ -192,6 +199,15 @@ export default function ProjectsPage() {
             </button>
           </header>
           <fieldset disabled={busy}>
+            <label>
+              Bedrijf
+              <select name="companyCode" value={targetCompany} required disabled={!!editing}
+                onChange={(event) => setTargetCompany(event.target.value)}>
+                {(editing ? companies.filter((c) => c.code === companyCode) : projectCompanies).map((company) => (
+                  <option key={company.code} value={company.code}>{company.name}</option>
+                ))}
+              </select>
+            </label>
             <label>
               Titel
               <input

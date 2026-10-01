@@ -29,7 +29,7 @@ const CompanyContext = createContext({
   companies: [] as Company[],
   companyCode: "",
   canManageCatalog: false,
-  can: (_permission: string): boolean => false,
+  can: (_permission: string, _companyCode?: string): boolean => false,
 });
 export const useCompany = () => useContext(CompanyContext);
 export default function PortalShell({ children }: { children: ReactNode }) {
@@ -119,12 +119,10 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         )}
       </main>
     );
-  const access = identity.businessAccess.find(
-    (a) => a.companyCode === companyCode,
-  );
-  const can = (permission: string) =>
-    !!access &&
-    (access.businessAdmin || access.permissions.includes(permission));
+  const can = (permission: string, code = companyCode) => {
+    const access = identity.businessAccess.find((a) => a.companyCode === code);
+    return !!access && (access.businessAdmin || access.permissions.includes(permission));
+  };
   const links = [
     { href: "/", name: "Overzicht" },
     ...(can("projects.read") ? [{ href: "/projects", name: "Projecten" }] : []),
