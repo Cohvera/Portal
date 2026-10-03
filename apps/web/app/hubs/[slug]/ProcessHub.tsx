@@ -227,200 +227,234 @@ export default function ProcessHub() {
                   <span>Vragen aandacht</span>
                 </article>
               </section>
-              <section id="bibliotheek" className="process-panel">
-                <div className="process-section-heading">
-                  <div>
+              <details
+                id="bibliotheek"
+                className="process-panel process-library"
+              >
+                <summary className="process-library-summary">
+                  <span className="process-library-heading">
                     <span className="process-eyebrow">
                       Van klantvraag tot resultaat
                     </span>
-                    <h2>Procesbibliotheek</h2>
-                    <p className="muted">
-                      Gemeenschappelijke groepsstandaarden. De gekozen business
-                      unit verandert dit register niet.
-                    </p>
+                    <span className="process-library-title">
+                      Procesbibliotheek
+                    </span>
+                    <span className="muted">
+                      Gemeenschappelijke groepsstandaarden voor alle business
+                      units.
+                    </span>
+                  </span>
+                  <span className="process-library-toggle">
+                    <span>{rows.length} processen</span>
+                    <span className="process-library-open-label">Openen</span>
+                    <span className="process-library-close-label">
+                      Inklappen
+                    </span>
+                    <svg
+                      className="process-library-chevron"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m6 9 6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </summary>
+                <div className="process-library-content">
+                  <div className="process-library-actions">
+                    <button
+                      className="secondary-button"
+                      onClick={() => void load()}
+                    >
+                      Vernieuwen
+                    </button>
                   </div>
-                  <button
-                    className="secondary-button"
-                    onClick={() => void load()}
+                  <div className="process-filters">
+                    <label>
+                      Zoeken
+                      <input
+                        type="search"
+                        placeholder="Proces, eigenaar of actie…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Type
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                      >
+                        <option value="">Alle types</option>
+                        {["Kernproces", "Ondersteuning", "Verbetering"].map(
+                          (c) => (
+                            <option key={c}>{c}</option>
+                          ),
+                        )}
+                      </select>
+                    </label>
+                    <label>
+                      Documentatiestatus
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                      >
+                        <option value="">Alle statussen</option>
+                        {Object.entries(processStatuses).map(([key, label]) => (
+                          <option key={key} value={key}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="process-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={attentionOnly}
+                        onChange={(e) => setAttentionOnly(e.target.checked)}
+                      />{" "}
+                      Alleen aandacht
+                    </label>
+                  </div>
+                  <div
+                    className="process-table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Procesoverzicht, horizontaal scrollbaar"
                   >
-                    Vernieuwen
-                  </button>
-                </div>
-                <div className="process-filters">
-                  <label>
-                    Zoeken
-                    <input
-                      type="search"
-                      placeholder="Proces, eigenaar of actie…"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Type
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                    >
-                      <option value="">Alle types</option>
-                      {["Kernproces", "Ondersteuning", "Verbetering"].map(
-                        (c) => (
-                          <option key={c}>{c}</option>
-                        ),
-                      )}
-                    </select>
-                  </label>
-                  <label>
-                    Documentatiestatus
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                    >
-                      <option value="">Alle statussen</option>
-                      {Object.entries(processStatuses).map(([key, label]) => (
-                        <option key={key} value={key}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="process-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={attentionOnly}
-                      onChange={(e) => setAttentionOnly(e.target.checked)}
-                    />{" "}
-                    Alleen aandacht
-                  </label>
-                </div>
-                <div
-                  className="process-table-scroll"
-                  tabIndex={0}
-                  role="region"
-                  aria-label="Procesoverzicht, horizontaal scrollbaar"
-                >
-                  <table className="process-table">
-                    <caption>
-                      {filtered.length} van {rows.length} processen · klik op
-                      een proces voor de overzichtsfiche
-                    </caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Proces</th>
-                        <th scope="col">Eigenaar</th>
-                        <th scope="col">Documentatie</th>
-                        <th scope="col">Werking</th>
-                        <th scope="col">Volgende actie / review</th>
-                        <th scope="col">Procesdocument</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((p) => (
-                        <tr key={p.id}>
-                          <td>
-                            <span className="process-id">
-                              {p.id} · {p.category}
-                            </span>
-                            <button
-                              className="process-name"
-                              onClick={() => open(p)}
-                            >
-                              {p.name}
-                            </button>
-                            <span className="process-boundary">
-                              {p.start} → {p.end}
-                            </span>
-                            <div className="process-tags">
-                              {p.priority === "HIGH" && (
-                                <span className="process-chip priority-HIGH">
-                                  Eerste uitwerking
-                                </span>
-                              )}
-                              {p.methodology && (
-                                <span className="process-chip">
-                                  {p.methodology}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            {p.owner || (
-                              <span className="muted">Nog toe te wijzen</span>
-                            )}
-                            <small className="process-owner-role">
-                              Voorstel: {p.ownerRole}
-                            </small>
-                          </td>
-                          <td>
-                            <span className={`process-chip doc-${p.status}`}>
-                              {processStatuses[p.status]}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={`process-chip health-${p.health}`}>
-                              {processHealth[p.health]}
-                            </span>
-                          </td>
-                          <td>
-                            <span>{p.nextAction || "Nog te bepalen"}</span>
-                            <small
-                              className={
-                                overdue(p)
-                                  ? "process-review overdue"
-                                  : "process-review"
-                              }
-                            >
-                              Review: {dateLabel(p.nextReviewOn)}
-                              {overdue(p) && " · achterstallig"}
-                            </small>
-                          </td>
-                          <td>
-                            {p.sharepointUrl ? (
-                              <a
-                                className="text-link"
-                                href={p.sharepointUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`${p.name} openen in SharePoint (nieuw tabblad)`}
+                    <table className="process-table">
+                      <caption>
+                        {filtered.length} van {rows.length} processen · klik op
+                        een proces voor de overzichtsfiche
+                      </caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Proces</th>
+                          <th scope="col">Eigenaar</th>
+                          <th scope="col">Documentatie</th>
+                          <th scope="col">Werking</th>
+                          <th scope="col">Volgende actie / review</th>
+                          <th scope="col">Procesdocument</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((p) => (
+                          <tr key={p.id}>
+                            <td>
+                              <span className="process-id">
+                                {p.id} · {p.category}
+                              </span>
+                              <button
+                                className="process-name"
+                                onClick={() => open(p)}
                               >
-                                SharePoint ↗
-                              </a>
-                            ) : (
-                              <span className="muted">Nog te koppelen</span>
-                            )}
-                            {p.methodology &&
-                              (p.methodologyUrl ? (
+                                {p.name}
+                              </button>
+                              <span className="process-boundary">
+                                {p.start} → {p.end}
+                              </span>
+                              <div className="process-tags">
+                                {p.priority === "HIGH" && (
+                                  <span className="process-chip priority-HIGH">
+                                    Eerste uitwerking
+                                  </span>
+                                )}
+                                {p.methodology && (
+                                  <span className="process-chip">
+                                    {p.methodology}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              {p.owner || (
+                                <span className="muted">Nog toe te wijzen</span>
+                              )}
+                              <small className="process-owner-role">
+                                Voorstel: {p.ownerRole}
+                              </small>
+                            </td>
+                            <td>
+                              <span className={`process-chip doc-${p.status}`}>
+                                {processStatuses[p.status]}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                className={`process-chip health-${p.health}`}
+                              >
+                                {processHealth[p.health]}
+                              </span>
+                            </td>
+                            <td>
+                              <span>{p.nextAction || "Nog te bepalen"}</span>
+                              <small
+                                className={
+                                  overdue(p)
+                                    ? "process-review overdue"
+                                    : "process-review"
+                                }
+                              >
+                                Review: {dateLabel(p.nextReviewOn)}
+                                {overdue(p) && " · achterstallig"}
+                              </small>
+                            </td>
+                            <td>
+                              {p.sharepointUrl ? (
                                 <a
-                                  className="process-method-link"
-                                  href={p.methodologyUrl}
+                                  className="text-link"
+                                  href={p.sharepointUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  aria-label={`${p.name} openen in SharePoint (nieuw tabblad)`}
                                 >
-                                  CPM-methodologie ↗
+                                  SharePoint ↗
                                 </a>
                               ) : (
-                                <small className="process-owner-role">
-                                  CPM-link ontbreekt
-                                </small>
-                              ))}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {!filtered.length && (
-                  <p className="empty-state">
-                    Geen processen voor deze filters. Pas je zoekopdracht of
-                    filters aan.
+                                <span className="muted">Nog te koppelen</span>
+                              )}
+                              {p.methodology &&
+                                (p.methodologyUrl ? (
+                                  <a
+                                    className="process-method-link"
+                                    href={p.methodologyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    CPM-methodologie ↗
+                                  </a>
+                                ) : (
+                                  <small className="process-owner-role">
+                                    CPM-link ontbreekt
+                                  </small>
+                                ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {!filtered.length && (
+                    <p className="empty-state">
+                      Geen processen voor deze filters. Pas je zoekopdracht of
+                      filters aan.
+                    </p>
+                  )}
+                  <p className="process-footnote">
+                    Documentatiestatus geeft aan hoe ver de standaard is
+                    uitgewerkt. Werking is een handmatige beoordeling met
+                    onderbouwing, geen automatische KPI-meting.
                   </p>
-                )}
-                <p className="process-footnote">
-                  Documentatiestatus geeft aan hoe ver de standaard is
-                  uitgewerkt. Werking is een handmatige beoordeling met
-                  onderbouwing, geen automatische KPI-meting.
-                </p>
-              </section>
+                </div>
+              </details>
               <section id="verbetering" className="process-panel">
                 <span className="process-eyebrow">
                   Zichtbaar maken · oplossen · borgen
