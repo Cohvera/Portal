@@ -107,3 +107,11 @@ pnpm --filter @cohvera/api test:inspections
 ```
 
 The earlier password-login experiment remains reverted. This implementation uses Microsoft identity and separate `PortalSession` / `EntraLoginAttempt` tables, without local passwords.
+
+## Process Hub
+
+`/hubs/process` bevat een groepsbreed register van tien bedrijfsprocessen, met eigenaar,
+status, reviewdatum, SharePoint-links en korte PDCA-opvolging. De procedures en CPM
+blijven in SharePoint. Portal.Admin kan het overzicht bijwerken; aangemelde
+bedrijfsleden kunnen het lezen. Pas de nieuwe database-migratie toe vóór deployment.
+Zie [gebruik en inrichting](docs/process-hub.md).

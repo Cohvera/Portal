@@ -17,6 +17,7 @@ import { authMode } from "./auth/config";
 import type { Request, Response, NextFunction } from "express";
 import { InspectionsController } from "./inspections/controller";
 import { CatalogController, AdminAccessController } from "./catalog";
+import { ProcessesController } from "./processes";
 import { ProjectsController } from "./projects";
 import {
   Body,
@@ -405,6 +406,7 @@ class AppController {
     ProjectsController,
     ProjectReferencesController,
     CatalogController,
+    ProcessesController,
     AdminAccessController,
   ],
 })
