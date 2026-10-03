@@ -244,3 +244,23 @@ model EntraLoginAttempt {
   expiresAt DateTime
   @@index([expiresAt])
 }
+
+// Group-wide process index. Full procedures and CPM remain in SharePoint.
+model ProcessRegister {
+  id String @id
+  owner String @default("")
+  status String @default("PLANNED")
+  health String @default("UNKNOWN")
+  priority String @default("NORMAL")
+  sharepointUrl String @default("")
+  methodologyUrl String @default("")
+  nextAction String @default("")
+  nextReviewOn String @default("")
+  target String @default("")
+  measurement String @default("")
+  problem String @default("")
+  countermeasure String @default("")
+  verification String @default("")
+  version Int @default(1)
+  updatedAt DateTime @updatedAt
+}
