@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ProcessHub from "./ProcessHub";
 import { coefHubs, getHub } from "../../../lib/coef";
 
 export function generateStaticParams() {
@@ -10,6 +11,7 @@ export default async function HubPage({ params }: { params: Promise<{ slug: stri
   const { slug } = await params;
   const hub = getHub(slug);
   if (!hub) notFound();
+  if (slug === "process") return <ProcessHub />;
 
   return (
     <main className="hub-page">

@@ -42,11 +42,11 @@ export const coefHubs: HubDefinition[] = [
     name: "Process Hub",
     shortName: "Process",
     tagline: "Eén manier van werken, zichtbaar en herhaalbaar.",
-    purpose: "Documenteert kernprocessen, verantwoordelijkheden, SLA's en procesverbeteringen zodat elke business unit op dezelfde basis kan schalen.",
+    purpose: "Overzicht van bedrijfsprocessen, eigenaarschap en verbeteropvolging. De volledige procesbeschrijvingen staan in SharePoint.",
     cards: [
-      { title: "Procesbibliotheek", description: "Sales, offerte, project, uitvoering, service en finance.", status: "active", metric: "7 domeinen" },
-      { title: "SLA & ownership", description: "Doorlooptijden en verantwoordelijken per processtap.", status: "planned" },
-      { title: "Procesissues", description: "Knelpunten die impact hebben op klant of cashflow.", status: "attention", metric: "Open" }
+      { title: "Procesbibliotheek", description: "Tien bedrijfsprocessen van klantaanvraag tot betaling en continue verbetering.", status: "active", metric: "10 processen", href: "/hubs/process#bibliotheek" },
+      { title: "SLA & ownership", description: "Eigenaar, meetpunt en reviewdatum per bedrijfsproces.", status: "active", href: "/hubs/process#bibliotheek" },
+      { title: "Procesissues", description: "Knelpunten, tegenmaatregelen en effectcontrole per proces.", status: "active", href: "/hubs/process#verbetering" }
     ]
   },
   {

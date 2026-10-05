@@ -111,3 +111,11 @@ The earlier password-login experiment remains reverted. This implementation uses
 ## Q-box Plenion connector
 
 Een lichte Python-connector stuurt de bestaande LAN-projectexport via HTTPS naar Cohvera. Zie [installatie op Q-box en portaalserver](connectors/qbox/README.md).
+
+## Process Hub
+
+`/hubs/process` bevat een groepsbreed register van tien bedrijfsprocessen, met eigenaar,
+status, reviewdatum, SharePoint-links en korte PDCA-opvolging. De procedures en CPM
+blijven in SharePoint. Portal.Admin kan het overzicht bijwerken; aangemelde
+bedrijfsleden kunnen het lezen. Pas de nieuwe database-migratie toe vóór deployment.
+Zie [gebruik en inrichting](docs/process-hub.md).
