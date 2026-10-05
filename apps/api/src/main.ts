@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { QboxImportController, PlenionStatusController } from "./integrations/qbox";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { AuthController } from "./auth/controller";
@@ -398,6 +399,7 @@ class AppController {
 
 @Module({
   controllers: [
+    QboxImportController, PlenionStatusController,
     AuthController,
     AccountsController,
     InspectionsController,
@@ -423,7 +425,7 @@ export async function configuredApp() {
     res.setHeader("Cache-Control", "no-store");
     if (publicAuthPath(req.path.replace(/\/$/, ""))) return next();
     // Bearer requests are verified independently in the guard, never as a user session.
-    if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined) return next();
+    if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined || req.headers["x-qbox-key"] !== undefined || req.path === "/integrations/qbox/plenion/projects") return next();
     void requestContext(req)
       .then((ctx) => authContext.run(ctx, () => next()))
       .catch(() =>

@@ -148,6 +148,15 @@ model AuditLog {
   @@index([pluginId, createdAt])
 }
 
+model QboxImport {
+  companyCode      String @id
+  snapshotId       String
+  digest           String
+  sourceObservedAt DateTime
+  receivedAt       DateTime @default(now())
+  projectCount     Int
+}
+
 model Project {
   id          String @id @default(cuid())
   companyId   String
@@ -158,6 +167,12 @@ model Project {
   statusColor String @default("#2563eb")
   dueDate     DateTime? @db.Date
   company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  externalSource String?
+  externalId String?
+  sourceDescription String?
+  sourcePlannedAt DateTime? @db.Date
+  sourceSeenAt DateTime?
+  @@unique([companyId, externalSource, externalId])
   tasks       ProjectTask[]
   @@index([companyId])
 }

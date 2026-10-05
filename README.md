@@ -107,3 +107,7 @@ pnpm --filter @cohvera/api test:inspections
 ```
 
 The earlier password-login experiment remains reverted. This implementation uses Microsoft identity and separate `PortalSession` / `EntraLoginAttempt` tables, without local passwords.
+
+## Q-box Plenion connector
+
+Een lichte Python-connector stuurt de bestaande LAN-projectexport via HTTPS naar Cohvera. Zie [installatie op Q-box en portaalserver](connectors/qbox/README.md).

@@ -8,6 +8,7 @@ import {
 import type { Request } from "express";
 import { context, membership, portalAdmin } from "./context";
 import { publicOrigin } from "./config";
+import { QboxImportController, verifyQboxKey } from "../integrations/qbox";
 import { verifyWarehouseKey } from "./warehouse-key";
 import { verifyServiceToken } from "./service";
 import { ProjectReferencesController } from "../project-references";
@@ -25,6 +26,14 @@ export class PortalGuard implements CanActivate {
     const req = exec.switchToHttp().getRequest<Request>();
     const path = req.path.replace(/\/$/, "") || "/";
     if (publicAuthPath(path)) return true;
+    if (req.headers["x-qbox-key"] !== undefined || exec.getClass() === QboxImportController) {
+      if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined)
+        throw new UnauthorizedException("Gebruik alleen de Q-box sleutel.");
+      verifyQboxKey(req.headers["x-qbox-key"]);
+      if (exec.getClass() !== QboxImportController || req.method !== "POST" || !req.is("application/json"))
+        throw new ForbiddenException("Deze sleutel mag alleen de Plenion-export importeren.");
+      return true;
+    }
     if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined) {
       if (req.headers.authorization !== undefined && req.headers["x-warehouse-key"] !== undefined)
         throw new UnauthorizedException("Gebruik één authenticatiemethode.");

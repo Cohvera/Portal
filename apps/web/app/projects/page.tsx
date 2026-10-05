@@ -24,6 +24,15 @@ export default function ProjectsPage() {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [refreshError, setRefreshError] = useState("");
+  const [plenion, setPlenion] = useState<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number} | null>(null);
+  useEffect(() => {
+    setPlenion(null);
+    if (companyCode !== "TOMME") return;
+    const controller = new AbortController();
+    request<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number}>(`/api/companies/${encodeURIComponent(companyCode)}/integrations/plenion/status`, {signal:controller.signal})
+      .then(setPlenion).catch(() => {});
+    return () => controller.abort();
+  }, [companyCode]);
   useEffect(() => {
     dialog.current?.close();
     setNotice("");
@@ -102,6 +111,12 @@ export default function ProjectsPage() {
           + Nieuw project
         </button>
       </header>
+      {companyCode === "TOMME" && plenion?.connected && (
+        <div className={plenion.stale ? "alert" : "success-box"} role="status">
+          Plenion via Q-box · {plenion.projectCount} projecten in de laatste export · Bronstand {plenion.sourceObservedAt ? new Date(plenion.sourceObservedAt).toLocaleString("nl-BE") : "onbekend"}.
+          {plenion.stale && " De bronstand is ouder dan 24 uur; bestaande projecten blijven beschikbaar."}
+        </div>
+      )}
       {!creatable && !loading && (
         <p className="muted">
           Je kunt projecten bekijken. Aanmaken vereist de bedrijfsrol Medewerker
@@ -149,7 +164,8 @@ export default function ProjectsPage() {
                 </button>
               </div>
               <h2>{p.name}</h2>
-              <p className="muted">Verantwoordelijke · {p.owner}</p>
+              <p className="muted">Verantwoordelijke · {p.owner || "Nog toe te wijzen"}</p>
+              {p.externalSource === "PLENION" && <p className="muted">Plenion · {p.externalId}</p>}
             </article>
           ))}
           {!projects.length && !error && (
