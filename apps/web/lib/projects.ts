@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useCompany } from "../app/PortalShell";
 export type Task = {id: string; projectId: string; title: string; description: string; assignee: string; priority: string; status: string; dueDate: string | null};
-export type Project = {externalSource?: string | null; externalId?: string | null; id: string; name: string; customer: string; owner: string; status: string; statusColor: string; dueDate: string | null; tasks: Task[]};
+export type Project = {sourceStatusLabel?: string | null; sourceIsClosed?: boolean | null; sourceIsActive?: boolean | null; externalSource?: string | null; externalId?: string | null; id: string; name: string; customer: string; owner: string; status: string; statusColor: string; dueDate: string | null; tasks: Task[]};
 export const projectStatuses: Record<string,string> = {Gepland:"#64748b",Actief:"#2563eb",Gepauzeerd:"#d97706",Afgerond:"#16834b"};
 export const statuses: Record<string,string> = {TODO:"Te doen",IN_PROGRESS:"Bezig",BLOCKED:"Geblokkeerd",DONE:"Klaar"};
 export const priorities: Record<string,string> = {LOW:"Laag",NORMAL:"Normaal",HIGH:"Hoog"};

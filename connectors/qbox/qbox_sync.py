@@ -63,8 +63,12 @@ def settings():
             raise ValueError()
     except ValueError:
         raise SyncError("QBOX_POLL_SECONDS moet tussen 30 en 3600 liggen") from None
-    return dict(key=key, source=source, destination=destination, interval=interval,
-                ca=(os.environ.get("QBOX_SOURCE_CA_FILE") or None) if urlsplit(source).scheme == "https" else None,
+    mode = os.environ.get("QBOX_SOURCE_MODE", "tv")
+    if mode not in ("tv", "datahub"):
+        raise SyncError("QBOX_SOURCE_MODE moet tv of datahub zijn")
+    hub = https_url(os.environ.get("QBOX_DATAHUB_URL", "http://192.168.10.228:3210"), allow_http=True)
+    return dict(key=key, source=source, destination=destination, interval=interval, mode=mode, hub=hub,
+                ca=(os.environ.get("QBOX_SOURCE_CA_FILE") or None) if urlsplit(hub if mode == "datahub" else source).scheme == "https" else None,
                 state=Path(os.environ.get("QBOX_STATE_FILE", "/var/lib/cohvera-qbox/state.json")))
 
 
@@ -87,7 +91,7 @@ def read_json(url, *, ca=None, payload=None, key=None):
         if len(raw) > MAX_BYTES:
             raise SyncError("Antwoord is te groot")
         result = json.loads(raw)
-        if not isinstance(result, dict):
+        if not isinstance(result, (dict, list)):
             raise SyncError("Onverwacht antwoordformaat")
         return result
     except HTTPError as error:
@@ -142,10 +146,76 @@ def validate(data, status, now=None):
             "projects":[{k:p[k] for k in ("number","customer","description","planned","status_label","evidence","active","is_current","closed")} for p in sorted(projects,key=lambda p:p["number"])]}
 
 
+def flag(value):
+    if type(value) not in (bool, int) or value not in (0, 1):
+        raise SyncError("Onbekende projectcheckbox; broncontrole vereist")
+    return bool(value)
+
+
+def read_datahub(config):
+    base = config["hub"]
+    def read(path):
+        return read_json(base + path, ca=config["ca"])
+    before = read("/api/v1/health")
+    evidence = read("/api/v1/tv/projects")
+    if not isinstance(before, dict) or not isinstance(evidence, dict):
+        raise SyncError("Ongeldige Data Hub-metadata")
+    sync = before.get("sync") or {}
+    snapshot = sync.get("snapshot_id")
+    if (before.get("service") != "ok" or sync.get("status") != "success" or
+        not snapshot or evidence.get("snapshot_id") != snapshot or
+        evidence.get("source_kind") != "central_datahub" or evidence.get("source_system") != "PLENION" or
+        evidence.get("complete") is not True):
+        raise SyncError("Geen actuele consistente Data Hub-snapshot")
+    observed = timestamp(evidence.get("source_observed_at"))
+    if observed > time.time()+300 or time.time()-observed >= 86400:
+        raise SyncError("Data Hub-bronstand is verlopen")
+    counts = before.get("counts", [])
+    expected = next((c.get("count") for c in counts if c.get("entity") == "projects"), None)
+    if type(expected) is not int or not 0 <= expected <= 10000:
+        raise SyncError("Ongeldig projecttotaal in Data Hub")
+    records = []
+    for offset in range(0, expected, 500):
+        page = read(f"/api/v1/projects?limit=500&offset={offset}&sort=id")
+        if not isinstance(page, list) or len(page) != min(500, expected-offset):
+            raise SyncError("Onvolledige projectpagina; niets verstuurd")
+        records.extend(page)
+    after = read("/api/v1/health")
+    if (not isinstance(after, dict) or after.get("service") != "ok" or
+        after.get("sync") != before.get("sync") or after.get("counts") != counts):
+        raise SyncError("Bron veranderde tijdens uitlezen; volgende poging opnieuw")
+    ids, numbers, projects = set(), set(), []
+    for row in records:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not row["id"] or row["id"] in ids:
+            raise SyncError("Dubbele of ongeldige bronrecord-ID")
+        ids.add(row["id"])
+        if not flag(row.get("is_current")):
+            continue
+        number = row.get("project_number")
+        if not isinstance(number, str) or not re.fullmatch(r"\d{1,60}", number) or number in numbers:
+            raise SyncError("Meer dan één huidige versie of ongeldig projectnummer")
+        numbers.add(number)
+        label = row.get("status_label")
+        if not isinstance(label, str) or not label.strip() or len(label)>100:
+            raise SyncError("Projectstatus ontbreekt")
+        project = dict(number=number,customer=row.get("customer_name"),description=row.get("description"),planned=row.get("planned_date"),status_label=label,evidence="central_datahub",active=flag(row.get("is_active")),closed=flag(row.get("is_closed")),is_current=True,source_id=row["id"])
+        # Reuse the TV validator for shared text/date validation, with a synthetic valid scope.
+        common = dict(project, status_label="07 - In Uitvoering", active=True, closed=False)
+        metadata = dict(schema_version=2,source_kind="central_datahub",source_system="PLENION",live=True,snapshot_id=snapshot,batch_id=snapshot,source_observed_at=evidence["source_observed_at"],valid_until=datetime.fromtimestamp(observed+86400,timezone.utc).isoformat(),projects=[common])
+        validate(metadata,dict(state="SUCCESS",source_kind="central_datahub",batch_id=snapshot,hub_snapshot_id=snapshot,source_observed_at=evidence["source_observed_at"],heartbeat_at=datetime.now(timezone.utc).isoformat()))
+        projects.append(project)
+    return dict(schema_version=3,scope="ALL_CURRENT_PROJECTS",complete=True,source_kind="central_datahub",source_system="PLENION",live=True,snapshot_id=snapshot,batch_id=snapshot,source_observed_at=evidence["source_observed_at"],valid_until=datetime.fromtimestamp(observed+86400,timezone.utc).isoformat(),projects=sorted(projects,key=lambda p:p["number"]))
+
+
 def sync_once(config, dry_run=False, force=False):
-    data = read_json(config["source"] + "/tv-project-data.json", ca=config["ca"])
-    status = read_json(config["source"] + "/tv-refresh-status.json", ca=config["ca"])
-    payload = validate(data, status)
+    if config.get("mode", "tv") == "datahub":
+        payload = read_datahub(config)
+    else:
+        data = read_json(config["source"] + "/tv-project-data.json", ca=config["ca"])
+        status = read_json(config["source"] + "/tv-refresh-status.json", ca=config["ca"])
+        if not isinstance(data, dict) or not isinstance(status, dict):
+            raise SyncError("Ongeldige TV-export")
+        payload = validate(data, status)
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     if dry_run:
         LOG.info("Bron geldig: %d projecten; niets verstuurd", len(payload["projects"]))

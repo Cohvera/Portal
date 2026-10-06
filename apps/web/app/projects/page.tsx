@@ -6,6 +6,8 @@ import {
   request,
   type Project,
 } from "../../lib/projects";
+import { filterProjects, projectScope, projectStatus, type ProjectFilters } from "../../lib/project-overview";
+import "./projects.css";
 import { useCompany } from "../PortalShell";
 
 export default function ProjectsPage() {
@@ -24,6 +26,12 @@ export default function ProjectsPage() {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [refreshError, setRefreshError] = useState("");
+  const [filters, setFilters] = useState<ProjectFilters>({query:"",status:"",owner:"",source:"",scope:"open"});
+  const resetFilters = () => setFilters({query:"",status:"",owner:"",source:"",scope:"open"});
+  const filteredProjects = filterProjects(projects, filters);
+  const owners = [...new Set(projects.map(p => p.owner).filter(owner => owner.trim()))].sort((a,b) => a.localeCompare(b,"nl-BE"));
+  const hasFilters = !!(filters.query || filters.status || filters.owner || filters.source || filters.scope !== "open");
+  const statusOptions = [...new Set(projects.map(projectStatus))].sort((a,b) => a.localeCompare(b,"nl-BE",{numeric:true}));
   const [plenion, setPlenion] = useState<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number} | null>(null);
   useEffect(() => {
     setPlenion(null);
@@ -37,6 +45,7 @@ export default function ProjectsPage() {
     dialog.current?.close();
     setNotice("");
     setRefreshError("");
+    resetFilters();
   }, [companyCode]);
   function open(project: Project | null = null) {
     setFormVersion((v) => v + 1);
@@ -141,48 +150,71 @@ export default function ProjectsPage() {
       {loading ? (
         <p role="status">Projecten laden…</p>
       ) : (
-        <section className="project-grid">
-          {projects.map((p) => (
-            <article className="card project-summary-card" key={p.id}>
-              <div className="task-meta">
-                <span className="project-status">
-                  <span
-                    style={{
-                      backgroundColor:
-                        p.statusColor || projectStatuses[p.status],
-                    }}
-                  />
-                  {p.status}
-                </span>
-                <button
-                  className="project-edit"
-                  aria-label={`${p.name} bewerken`}
-                  disabled={busy || !writable}
-                  onClick={() => open(p)}
-                >
-                  Bewerken
-                </button>
-              </div>
-              <h2>{p.name}</h2>
-              <p className="muted">Verantwoordelijke · {p.owner || "Nog toe te wijzen"}</p>
-              {p.externalSource === "PLENION" && <p className="muted">Plenion · {p.externalId}</p>}
-            </article>
-          ))}
-          {!projects.length && !error && (
-            <div className="empty-state">
-              <h2>Je eerste project begint hier</h2>
-              <p>
-                Een titel en verantwoordelijke zijn voldoende om te starten.
-              </p>
-              <button
-                className="button-primary"
-                disabled={!creatable}
-                onClick={() => open()}
-              >
-                + Nieuw project
+        <section className="projects-overview" aria-label="Projectoverzicht">
+          <div className="projects-status-grid" aria-label="Filter op afsluiting">
+            {[{value:"open",label:"Open",color:"#2563eb"},{value:"closed",label:"Afgesloten",color:"#16834b"},{value:"unknown",label:"Nog niet bevestigd",color:"#d97706"},{value:"",label:"Alle projecten",color:"#0b2038"}].map(({value,label,color}) => (
+              <button key={label} type="button" className="projects-status-tile"
+                aria-pressed={filters.scope === value}
+                onClick={() => setFilters(current => ({...current,scope:value}))}>
+                <span><i style={{backgroundColor:color}} aria-hidden="true" />{label}</span>
+                <strong>{value ? projects.filter(p => projectScope(p) === value).length : projects.length}</strong>
               </button>
+            ))}
+          </div>
+          <div className="card projects-list-card">
+            <div className="projects-filter-bar">
+              <label className="projects-search">Zoeken
+                <input type="search" placeholder="Project, klant of projectnummer…" value={filters.query}
+                  onChange={event => setFilters(current => ({...current,query:event.target.value}))} />
+              </label>
+              <label>Status
+                <select value={filters.status} onChange={event => setFilters(current => ({...current,status:event.target.value}))}>
+                  <option value="">Alle statussen</option>
+                  {statusOptions.map(value => <option key={value} value={value}>{value}</option>)}
+                </select>
+              </label>
+              <label>Verantwoordelijke
+                <select value={filters.owner} onChange={event => setFilters(current => ({...current,owner:event.target.value}))}>
+                  <option value="">Iedereen</option><option value="__unassigned__">Nog toe te wijzen</option>
+                  {owners.map(owner => <option key={owner} value={owner}>{owner}</option>)}
+                </select>
+              </label>
+              <label>Bron
+                <select value={filters.source} onChange={event => setFilters(current => ({...current,source:event.target.value}))}>
+                  <option value="">Alle bronnen</option><option value="PLENION">Plenion</option><option value="PORTAL">Handmatig in portaal</option>
+                </select>
+              </label>
             </div>
-          )}
+            <div className="projects-results-heading">
+              <p role="status" aria-live="polite"><strong>{filteredProjects.length}</strong> van {projects.length} projecten{filters.status && ` · ${filters.status}`}</p>
+              {hasFilters && <button type="button" className="secondary-button" onClick={resetFilters}>Filters wissen</button>}
+            </div>
+            {projects.some(p => p.externalSource === "PLENION") && <p className="muted projects-source-note">Plenion-projecten tonen hun originele bronstatus. Open/Afgesloten volgt het afsluitvinkje uit de bron, ook als het statuslabel daarvan afwijkt.</p>}
+            {filteredProjects.length > 0 ? (
+              <div className="projects-table-scroll">
+                <table className="projects-table">
+                  <caption className="projects-visually-hidden">Projecten van het geselecteerde bedrijf, gefilterd op status, verantwoordelijke, bron en zoekterm</caption>
+                  <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Afgesloten</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
+                  <tbody>{filteredProjects.map(p => (
+                    <tr key={p.id}>
+                      <td><strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}</td>
+                      <td><span className="project-status"><span style={{backgroundColor:p.externalSource === "PLENION" ? (projectScope(p) === "closed" ? "#16834b" : "#2563eb") : p.statusColor || projectStatuses[p.status]}} />{projectStatus(p)}</span></td>
+                      <td>{projectScope(p) === "unknown" ? <span className="muted">Nog niet bevestigd</span> : <label className="projects-closed-flag"><input type="checkbox" checked={projectScope(p) === "closed"} disabled aria-label={`${p.name}: afgesloten volgens ${p.externalSource === "PLENION" ? "Plenion" : "portaalstatus"}`} />{projectScope(p) === "closed" ? "Ja" : "Nee"}</label>}</td>
+                      <td><span className={!p.owner.trim() ? "muted" : ""}>{p.owner || "Nog toe te wijzen"}</span></td>
+                      <td><span className="projects-source-badge">{p.externalSource === "PLENION" ? "Plenion" : "Portaal"}</span>{p.externalId && <span className="projects-customer">{p.externalId}</span>}</td>
+                      <td><button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ) : !error && (
+              <div className="empty-state">
+                <h2>{projects.length ? "Geen projecten voor deze selectie" : "Je eerste project begint hier"}</h2>
+                <p>{projects.length ? "Pas de zoekterm of filters aan om meer projecten te zien." : "Een titel en verantwoordelijke zijn voldoende om te starten."}</p>
+                {hasFilters ? <button className="secondary-button" onClick={resetFilters}>Filters wissen</button> : <button className="button-primary" disabled={!creatable} onClick={() => open()}>+ Nieuw project</button>}
+              </div>
+            )}
+          </div>
         </section>
       )}
       <dialog
@@ -234,9 +266,10 @@ export default function ProjectsPage() {
                 placeholder="Bijvoorbeeld: Renovatie kantoor"
               />
             </label>
+            {editing?.externalSource === "PLENION" && <p className="muted">Plenion-status: {projectStatus(editing)} · Afgesloten: {projectScope(editing) === "unknown" ? "onbekend" : projectScope(editing) === "closed" ? "ja" : "nee"}. Deze brongegevens worden in Plenion beheerd; de portaalstatus hieronder staat daar los van.</p>}
             <div className="form-grid">
               <label>
-                Status
+                Portaalstatus
                 <select
                   name="status"
                   value={status}

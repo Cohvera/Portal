@@ -30,6 +30,35 @@ class Tests(unittest.TestCase):
             req=opener.return_value.open.call_args.args[0]
             self.assertIsNone(req.get_header('X-qbox-key'))
 
+    def test_datahub_current_versions_flags_and_snapshot_consistency(self):
+        data,_=fixture()
+        row=dict(id='r1',project_number='123',customer_name='Test',description='Test',planned_date='',status_label='07 - In Uitvoering',is_current=1,is_active=0,is_closed=1)
+        health=dict(service='ok',sync=dict(snapshot_id='test',status='success'),counts=[dict(entity='projects',count=2)])
+        evidence=dict(snapshot_id='test',source_kind='central_datahub',source_system='PLENION',complete=True,source_observed_at=data['source_observed_at'])
+        rows=[dict(row,id='older',is_current=0),row]
+        config=dict(hub='http://hub.lan',ca=None)
+        with patch.object(q,'read_json',side_effect=[health,evidence,rows,health]):
+            result=q.read_datahub(config)
+            self.assertEqual(result['schema_version'],3)
+            self.assertEqual(len(result['projects']),1)
+            self.assertTrue(result['projects'][0]['closed'])
+            self.assertEqual(result['projects'][0]['status_label'],'07 - In Uitvoering')
+        for bad_rows in ([row,dict(row,id='duplicate-current')],[dict(row,is_closed=None),dict(row,id='old',is_current=0)],rows[:1]):
+            with patch.object(q,'read_json',side_effect=[health,evidence,bad_rows,health]):
+                with self.assertRaises(q.SyncError): q.read_datahub(config)
+        with patch.object(q,'read_json',side_effect=[health,evidence,rows,dict(health,sync=dict(snapshot_id='changed',status='success'))]):
+            with self.assertRaises(q.SyncError): q.read_datahub(config)
+
+    def test_datahub_pagination_is_complete(self):
+        data,_=fixture()
+        health=dict(service='ok',sync=dict(snapshot_id='test',status='success'),counts=[dict(entity='projects',count=501)])
+        evidence=dict(snapshot_id='test',source_kind='central_datahub',source_system='PLENION',complete=True,source_observed_at=data['source_observed_at'])
+        rows=[dict(id=str(i),project_number=str(i),customer_name='',description='',planned_date='',status_label='02 - Offerte',is_current=1,is_active=0,is_closed=0) for i in range(501)]
+        with patch.object(q,'read_json',side_effect=[health,evidence,rows[:500],rows[500:],health]) as call:
+            result=q.read_datahub(dict(hub='http://hub.lan',ca=None))
+            self.assertEqual(len(result['projects']),501)
+            self.assertIn('offset=500',call.call_args_list[3].args[0])
+
     def test_validation(self):
         data,status=fixture()
         self.assertEqual(len(q.validate(data,status)['projects']),1)

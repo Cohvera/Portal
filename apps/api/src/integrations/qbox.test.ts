@@ -63,6 +63,19 @@ test("Import upserts stable source IDs, preserves local fields and rejects older
     await assert.rejects(controller.ingest(data));
     await controller.ingest({...newer,source_observed_at:new Date(Date.parse(newer.source_observed_at)+10000).toISOString(),projects:[]});
     assert.equal(projects.size,1); // Missing from a filtered export is not a deletion.
+    const full={...newer,schema_version:3,scope:"ALL_CURRENT_PROJECTS",complete:true,source_observed_at:previous.sourceObservedAt.toISOString(),projects:[{...data.projects[0],source_id:"revision-2",closed:true,active:false}]};
+    await controller.ingest(full); // Upgrade of the same source snapshot is permitted once.
+    assert.equal(previous.contractVersion,3);
+    assert.equal(projects.get("123").sourceIsClosed,true);
+    assert.equal(projects.get("123").sourceStatusLabel,"07 - In Uitvoering");
+    assert.equal(projects.get("123").name,"Eigen titel");
+    assert.equal(projects.size,1);
+    assert.equal((await controller.ingest(full)).duplicate,true);
+    await assert.rejects(controller.ingest({...full,schema_version:2}));
+    const reopened={...full,source_observed_at:new Date(Date.parse(full.source_observed_at)+10000).toISOString(),projects:[{...full.projects[0],closed:false,status_label:"09 - Afgewerkt"}]};
+    await controller.ingest(reopened);
+    assert.equal(projects.get("123").sourceIsClosed,false);
+    assert.equal(projects.get("123").sourceStatusLabel,"09 - Afgewerkt");
   } finally { prisma.$transaction=original; if(oldCompany===undefined) delete process.env.QBOX_IMPORT_COMPANY; else process.env.QBOX_IMPORT_COMPANY=oldCompany; }
 });
 
@@ -76,4 +89,12 @@ test("Import company is explicit server configuration with a Tomme default", () 
     process.env.QBOX_IMPORT_COMPANY="UNKNOWN";
     assert.throws(()=>qboxCompanyCode());
   } finally { if(old===undefined) delete process.env.QBOX_IMPORT_COMPANY; else process.env.QBOX_IMPORT_COMPANY=old; }
+});
+
+test("Full snapshot preserves the checkbox independently of status label", () => {
+  const data={...fixture(),schema_version:3,scope:"ALL_CURRENT_PROJECTS",complete:true};
+  const p={...data.projects[0],source_id:"r1",active:false,closed:true};
+  assert.equal(validateSnapshot({...data,projects:[p]}).projects[0].closed,true);
+  for(const patch of [{closed:null},{closed:1},{is_current:false},{source_id:""}]) assert.throws(()=>validateSnapshot({...data,projects:[{...p,...patch}]}));
+  assert.throws(()=>validateSnapshot({...data,complete:false,projects:[p]}));
 });

@@ -149,6 +149,7 @@ model AuditLog {
 }
 
 model QboxImport {
+  contractVersion Int @default(2)
   companyCode      String @id
   snapshotId       String
   digest           String
@@ -169,6 +170,10 @@ model Project {
   company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   externalSource String?
   externalId String?
+  sourceStatusLabel String?
+  sourceIsClosed Boolean?
+  sourceIsActive Boolean?
+  sourceRecordId String?
   sourceDescription String?
   sourcePlannedAt DateTime? @db.Date
   sourceSeenAt DateTime?

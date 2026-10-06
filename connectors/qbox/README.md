@@ -14,12 +14,14 @@ Plenion → bestaande Central Data Hub/export op het LAN
                            Inventory
 ```
 
-De connector schrijft nooit naar Plenion, HFSQL of de LAN-export. Hij leest alleen:
+De connector schrijft nooit naar Plenion, HFSQL of de LAN-export. In `datahub`-modus leest hij `/api/v1/health`, alle pagina’s van `/api/v1/projects` en de bronmetadata van `/api/v1/tv/projects` op `QBOX_DATAHUB_URL`. De tv-projectselectie zelf wordt niet gebruikt.
+
+De oudere `tv`-modus leest alleen:
 
 - `http://www.tomme-energie.lan/projecten-tv/tv-project-data.json`
 - `http://www.tomme-energie.lan/projecten-tv/tv-refresh-status.json`
 
-Dit is de selectie **In Uitvoering**, niet alle Plenion-projecten. Voertuigen, documenten en andere gegevens worden in deze eerste versie niet verstuurd. Per minuut wordt de bron gecontroleerd. Alleen gewijzigde gegevens worden verstuurd; ongewijzigde gegevens worden na zes uur opnieuw bevestigd. Dit maakt de dagelijkse Plenion-bronkopie niet realtime.
+De oudere tv-modus bevat alleen **In Uitvoering**. De nieuwe datahub-modus bevat alle als huidig gemarkeerde projectversies, met originele status en afsluitindicator. Voertuigen, documenten en andere gegevens worden in deze eerste versie niet verstuurd. Per minuut wordt de bron gecontroleerd. Alleen gewijzigde gegevens worden verstuurd; ongewijzigde gegevens worden na zes uur opnieuw bevestigd. Dit maakt de dagelijkse Plenion-bronkopie niet realtime.
 
 ## 1. Bereid Cohvera voor — op de portaalserver
 
@@ -94,6 +96,8 @@ sudo nano /etc/cohvera-qbox/qbox.env
 Vul in (behoud je bestaande importsleutel als die al ingesteld is):
 
 ```dotenv
+QBOX_SOURCE_MODE=datahub
+QBOX_DATAHUB_URL=http://192.168.10.228:3210
 QBOX_SOURCE_URL=http://www.tomme-energie.lan/projecten-tv
 QBOX_SOURCE_CA_FILE=
 QBOX_PORTAL_URL=https://portal.cohvera.be
@@ -141,11 +145,11 @@ Daarna kan Inventory deze projecten via de bestaande Cohvera-projectkoppeling op
 
 - De combinatie bedrijf + bron `PLENION` + projectnummer voorkomt duplicaten.
 - Klant, bronomschrijving, bronplanning en laatste bronstand worden bijgewerkt.
-- Een nieuw project krijgt status Actief. De verantwoordelijke is eerst leeg; die staat niet in de bron.
+- Een nieuw project krijgt intern portaalstatus Actief; het overzicht toont voor Plenion-projecten de originele bronstatus. De verantwoordelijke is eerst leeg; die staat niet in de bron.
 - Een lokale titel, status of verantwoordelijke wordt bij volgende imports niet overschreven.
 - Bronplanning wordt apart opgeslagen en wordt niet als deadline op de eenvoudige projectenpagina gezet.
-- Een project dat uit de gefilterde export verdwijnt, wordt **niet** automatisch afgesloten of verwijderd. Daarvoor is een uitgebreidere bron nodig.
-- Een ouder snapshot kan een nieuwere import niet overschrijven. Dezelfde bronstand met afwijkende inhoud wordt geweigerd.
+- Afgesloten volgt uitsluitend de bronindicator `is_closed`, niet de tekst van het statuslabel en niet het ontbreken uit een selectie. Een verdwenen project wordt niet automatisch verwijderd of afgesloten.
+- Een ouder snapshot kan een nieuwere import niet overschrijven. Dezelfde bronstand met afwijkende inhoud wordt geweigerd, behalve de eenmalige contractupgrade van tv-versie 2 naar volledige versie 3. Daarna wordt een oudere tv-import geweigerd.
 - Fouten leiden tot vertraagde herpogingen, maximaal iedere 15 minuten. Na succes keert de connector terug naar het ingestelde interval.
 - Lokale voortgang wordt pas opgeslagen na bevestiging door Cohvera. Bij een verloren antwoord is opnieuw versturen veilig.
 - Er draait één serviceproces. Start niet tegelijkertijd extra handmatige importprocessen met hetzelfde statusbestand.
@@ -200,3 +204,61 @@ sudo systemctl start cohvera-qbox
 ```
 
 Nog geen bevestiging gezien? Controleer eerst `sudo systemctl status cohvera-qbox --no-pager` en `sudo journalctl -u cohvera-qbox -n 50 --no-pager`. Een ander doelbedrijf lost een netwerk-, bron- of sleutelfout niet op.
+
+## Bestaande installatie uitbreiden naar alle statussen
+
+Voer dit in deze volgorde uit. Het doelbedrijf blijft de ingestelde `QBOX_IMPORT_COMPANY` (bij jullie voorlopig `QHOME`). Er worden geen bestaande projecten naar een ander bedrijf verplaatst.
+
+1. Zet de gewijzigde Portal-code op GitHub, haal hem op de portaalserver op en bouw **de hele Portal** opnieuw, inclusief web en migraties:
+
+```sh
+cd /root/Portal
+git pull --ff-only
+docker compose -f docker-compose.yml -f docker-compose.warehouse.yml up -d --build
+```
+
+De nieuwe migratie `20261006120000_plenion_status_flags` moet geslaagd zijn. Maak zoals gebruikelijk vooraf een databasebackup. Deze migratie voegt status/afsluitvelden toe; hij wijzigt geen bestaande bedrijfsindeling.
+
+2. Kopieer vanaf je Mac het nieuwe script:
+
+```sh
+scp /Users/milansaelens/Development/cohvera/Portal/connectors/qbox/qbox_sync.py loxberry@192.168.10.78:/tmp/qbox_sync.py
+```
+
+3. Voer op de **LoxBerry** uit:
+
+```sh
+sudo systemctl stop cohvera-qbox
+sudo install -m 644 /tmp/qbox_sync.py /opt/cohvera-qbox/qbox_sync.py
+sudo nano /etc/cohvera-qbox/qbox.env
+```
+
+Voeg deze regels toe of werk ze bij; behoud de andere instellingen en dezelfde sleutel:
+
+```dotenv
+QBOX_SOURCE_MODE=datahub
+QBOX_DATAHUB_URL=http://192.168.10.228:3210
+QBOX_SOURCE_CA_FILE=
+```
+
+4. Test op de LoxBerry eerst zonder te versturen:
+
+```sh
+sudo sh -c 'set -a; . /etc/cohvera-qbox/qbox.env; set +a; python3 /opt/cohvera-qbox/qbox_sync.py --dry-run'
+```
+
+Na `Bron geldig` voer je de import uit en start je de service opnieuw:
+
+```sh
+sudo sh -c 'set -a; . /etc/cohvera-qbox/qbox.env; set +a; python3 /opt/cohvera-qbox/qbox_sync.py --once --force'
+sudo systemctl start cohvera-qbox
+sudo journalctl -u cohvera-qbox -n 30 --no-pager
+```
+
+Bij fouten herstart je de service eveneens, zodat de volgende poging automatisch plaatsvindt. Controleer de fout en herstel de configuratie; zet niet stilzwijgend terug naar een tv-import als versie 3 al ontvangen is.
+
+5. Open Cohvera → het ingestelde bedrijf → Projecten. Standaard zie je **Open**. Kies **Afgesloten** of **Alle projecten**, en kies vervolgens de gewenste originele Plenion-status. De zichtbare checkbox is alleen-lezen: hij toont `is_closed` uit de datahub. `is_active` en het statuslabel blijven afzonderlijke bronvelden; een status ‘Afgewerkt’ zonder afsluitvinkje telt dus niet als afgesloten.
+
+De datahub-code in de gedownloade GitHub-kopie is ouder dan de aangetroffen draaiende API. Deze connector vereist de live velden `status_label`, `is_current`, `is_closed`, `is_active`, `customer_name`, `planned_date` en de snapshotmetadata. Bij ontbrekende velden, dubbele huidige projectnummers, onvolledige paginering of een snapshotwissel wordt niets geïmporteerd. Onbekende afsluitinformatie wordt in Cohvera als **Nog niet bevestigd** getoond, niet geraden.
+
+Read-only controle op 6 oktober 2026: 1.670 bronrecords, 1.053 huidige versies, 95 open en 958 afgesloten. Dit zijn controletotalen, geen vaste verwachte aantallen in de code. De precieze Plenion-schermvinkjes zijn niet rechtstreeks in de Plenion-UI geïnspecteerd; de connector gebruikt de door de datahub gepubliceerde `is_closed`-indicator.
