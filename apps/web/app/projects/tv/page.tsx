@@ -146,34 +146,134 @@ export default function TvPage() {
     <tr key={p.id} className={planned(p) && planned(p) < day ? "tv-late" : ""}>
       <td>{fmt(planned(p))}</td>
       <td>{p.externalId || "Portaal"}</td>
-      <td>
-        <strong>{p.customer || p.name}</strong>
-        <span>{p.sourceDescription || p.name}</span>
+      <td title={p.customer || p.name}>{p.customer || p.name}</td>
+      <td title={p.sourceDescription || p.name}>
+        {p.sourceDescription || p.name}
       </td>
-      <td>{p.owner || "—"}</td>
     </tr>
   );
   return (
     <main ref={board} className="tv-board">
       <header className="tv-header">
         <div>
-          <p className="tv-eyebrow">COHVERA · BEDRIJFSOVERZICHT</p>
-          <h1>Projecten & planning</h1>
+          <h1>Projecten & voertuigen</h1>
+          <label className="tv-company">
+            Actief bedrijf
+            <select
+              aria-label="Actief bedrijf"
+              value={companyCode}
+              onChange={(e) => selectCompany(e.target.value)}
+            >
+              {companies.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="tv-toolbar">
+            <Link href="/tools">← Tools & Solutions</Link>
+            <span>
+              {settings.selection === "execution"
+                ? "In uitvoering"
+                : "Alle open projecten"}
+            </span>
+            <button onClick={() => setPaused((p) => !p)}>
+              {paused ? "Rotatie starten" : "Rotatie pauzeren"}
+            </button>
+            <button
+              onClick={() => {
+                if (document.fullscreenElement) {
+                  void document.exitFullscreen();
+                } else {
+                  void board.current
+                    ?.requestFullscreen()
+                    .catch(() =>
+                      setError(
+                        "Volledig scherm is niet beschikbaar in deze browser.",
+                      ),
+                    );
+                }
+              }}
+            >
+              Volledig scherm
+            </button>
+            {can("projects.manage") && (
+              <button disabled={!data} onClick={edit}>
+                Instellingen
+              </button>
+            )}
+          </div>
         </div>
-        <label className="tv-company">
-          Actief bedrijf
-          <select
-            aria-label="Actief bedrijf"
-            value={companyCode}
-            onChange={(e) => selectCompany(e.target.value)}
+        <div
+          className={`tv-health ${connected ? "" : "tv-warning"}`}
+          role="status"
+        >
+          <strong>
+            {!data && !error
+              ? "Gegevens laden…"
+              : connected
+                ? "Cohvera verbonden"
+                : error || "Geen actuele verbinding"}
+          </strong>
+          <span>
+            {data?.source
+              ? `Plenion-bronstand: ${new Date(data.source.sourceObservedAt).toLocaleString("nl-BE", { timeZone: "Europe/Brussels" })}${fresh(data.source.sourceObservedAt, now) ? "" : " · verouderd; Plenion-projecten verborgen"}`
+              : "Geen Plenion-import voor dit bedrijf; handmatige projecten blijven beschikbaar."}
+          </span>
+        </div>
+        <section className="tv-panel tv-nas">
+          <div>
+            <h2>NAS analyser</h2>
+            <p>
+              {nasOk
+                ? {
+                    ok: "Belasting gezond",
+                    warning: "Belasting verhoogd",
+                    critical: "Hoge belasting",
+                    unknown: "Meting controleren",
+                  }[nas!.status] || "Meting controleren"
+                : "Geen actuele, bevestigde meting"}
+            </p>
+          </div>
+          <div className="tv-nas-values">
+            CPU {nasOk ? pct(nas?.latest.cpu) : "—"} · RAM{" "}
+            {nasOk ? pct(nas?.latest.ram) : "—"} · Schijf{" "}
+            {nasOk ? pct(nas?.latest.disk) : "—"} · I/O{" "}
+            {nasOk ? pct(nas?.latest.io) : "—"}
+            <small>24 uur · groen CPU · blauw RAM</small>
+          </div>
+          <svg
+            viewBox="0 0 300 50"
+            role="img"
+            aria-label="NAS-belasting in de laatste 24 uur"
           >
-            {companies.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            {(["cpu", "ram"] as const).map((key) => {
+              let previous = 0;
+              const d = (nas?.history || [])
+                .filter((p) => Date.parse(p.checkedAt) >= now - DAY)
+                .sort((a, b) => a.checkedAt.localeCompare(b.checkedAt))
+                .map((p) => {
+                  const t = Date.parse(p.checkedAt),
+                    v = p[key];
+                  if (v == null) return "";
+                  const op = previous && t - previous <= 660000 ? "L" : "M";
+                  previous = t;
+                  return `${op}${Math.max(0, Math.min(300, ((t - now + DAY) / DAY) * 300)).toFixed(1)},${(48 - v * 0.46).toFixed(1)}`;
+                })
+                .join(" ");
+              return (
+                <path
+                  key={key}
+                  d={d}
+                  fill="none"
+                  stroke={key === "cpu" ? "#40d799" : "#39baff"}
+                  strokeWidth="1.5"
+                />
+              );
+            })}
+          </svg>
+        </section>
         <div className="tv-clock">
           {new Date(now).toLocaleTimeString("nl-BE", {
             timeZone: "Europe/Brussels",
@@ -183,56 +283,6 @@ export default function TvPage() {
           <small>{fmt(day)}</small>
         </div>
       </header>
-      <div className="tv-toolbar">
-        <Link href="/tools">← Tools & Solutions</Link>
-        <span>
-          {settings.selection === "execution"
-            ? "In uitvoering"
-            : "Alle open projecten"}
-        </span>
-        <button onClick={() => setPaused((p) => !p)}>
-          {paused ? "Rotatie starten" : "Rotatie pauzeren"}
-        </button>
-        <button
-          onClick={() => {
-            if (document.fullscreenElement) {
-              void document.exitFullscreen();
-            } else {
-              void board.current
-                ?.requestFullscreen()
-                .catch(() =>
-                  setError(
-                    "Volledig scherm is niet beschikbaar in deze browser.",
-                  ),
-                );
-            }
-          }}
-        >
-          Volledig scherm
-        </button>
-        {can("projects.manage") && (
-          <button disabled={!data} onClick={edit}>
-            Instellingen
-          </button>
-        )}
-      </div>
-      <div
-        className={`tv-health ${connected ? "" : "tv-warning"}`}
-        role="status"
-      >
-        <strong>
-          {!data && !error
-            ? "Gegevens laden…"
-            : connected
-              ? "Cohvera verbonden"
-              : error || "Geen actuele verbinding"}
-        </strong>
-        <span>
-          {data?.source
-            ? `Plenion-bronstand: ${new Date(data.source.sourceObservedAt).toLocaleString("nl-BE", { timeZone: "Europe/Brussels" })}${fresh(data.source.sourceObservedAt, now) ? "" : " · verouderd; Plenion-projecten verborgen"}`
-            : "Geen Plenion-import voor dit bedrijf; handmatige projecten blijven beschikbaar."}
-        </span>
-      </div>
       <section className="tv-metrics" aria-label="Projectaantallen">
         {[
           ["Planning verstreken", groups.late.length],
@@ -246,85 +296,10 @@ export default function TvPage() {
           </div>
         ))}
       </section>
-      <div className="tv-main-grid">
-        <section className="tv-panel">
+      <div className="tv-wall-columns">
+        <section className="tv-panel tv-fleet-panel">
           <header>
-            <h2>Lopende projecten</h2>
-            <span>
-              Pagina {(page % pages) + 1}/{pages}
-            </span>
-          </header>
-          <div className="tv-table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Planning</th>
-                  <th>Nummer</th>
-                  <th>Klant / project</th>
-                  <th>Opvolging</th>
-                </tr>
-              </thead>
-              <tbody>
-                {current
-                  .slice((page % pages) * 8, (page % pages) * 8 + 8)
-                  .map(row)}
-              </tbody>
-            </table>
-          </div>
-          {!current.length && (
-            <p className="tv-empty">
-              {connected
-                ? "Geen lopende projecten in deze selectie."
-                : "Projecten verborgen tot de verbinding hersteld is."}
-            </p>
-          )}
-        </section>
-        <section className="tv-panel">
-          <header>
-            <h2>Binnenkort</h2>
-            <span>
-              {(page % upPages) + 1}/{upPages}
-            </span>
-          </header>
-          {groups.upcoming
-            .slice((page % upPages) * 6, (page % upPages) * 6 + 6)
-            .map((p) => (
-              <article className="tv-upcoming" key={p.id}>
-                <time>{fmt(planned(p))}</time>
-                <div>
-                  <strong>{p.customer || p.name}</strong>
-                  <p>
-                    {p.externalId} · {p.sourceDescription || p.name}
-                  </p>
-                </div>
-              </article>
-            ))}
-          {!groups.upcoming.length && (
-            <p className="tv-empty">Geen toekomstige planning.</p>
-          )}
-        </section>
-      </div>
-      <section className="tv-panel tv-planning">
-        <header>
-          <h2>Planning · komende 12 maanden</h2>
-          <span>
-            {selected.filter((p) => !planned(p)).length} zonder bronplanning
-          </span>
-        </header>
-        <div className="tv-chart">
-          {months.map((m) => (
-            <div key={m.key}>
-              <strong>{m.count}</strong>
-              <i style={{ height: `${Math.max(3, (m.count / max) * 65)}px` }} />
-              <span>{m.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-      <div className="tv-bottom-grid">
-        <section className="tv-panel">
-          <header>
-            <h2>Voertuigen & keuringen</h2>
+            <h2>Voertuigen · keuring</h2>
             <span>{vehicles.length} voertuigen</span>
           </header>
           {!fleetOk ? (
@@ -347,14 +322,24 @@ export default function TvPage() {
                         key={v.source_id}
                         className={`tv-vehicle ${state.color}`}
                       >
-                        <strong>{v.plate}</strong>
+                        <div className="tv-vehicle-head">
+                          <strong>{v.plate}</strong>
+                          <i
+                            className={`tv-dot ${state.color}`}
+                            aria-hidden="true"
+                          />
+                        </div>
                         <p>{v.name}</p>
-                        <span>{fmt(v.next_inspection)}</span>
+                        <span>Volgende keuring: {fmt(v.next_inspection)}</span>
                         <b>{state.label}</b>
                       </article>
                     );
                   })}
               </div>
+              <p className="tv-vehicle-legend">
+                <span>● &gt; 3 maanden</span> · <span>● 1–3 maanden</span>
+                <br />● ≤ 1 maand / datum ontbreekt
+              </p>
               <div
                 className="tv-inspection-year"
                 aria-label="Keuringen dit kalenderjaar"
@@ -364,7 +349,10 @@ export default function TvPage() {
                     day.slice(0, 4) + "-" + String(i + 1).padStart(2, "0");
                   return (
                     <span key={key}>
-                      {i + 1}
+                      {new Date(`${key}-01T12:00:00Z`).toLocaleDateString(
+                        "nl-BE",
+                        { month: "short", timeZone: "UTC" },
+                      )}
                       <b>
                         {
                           vehicles.filter((v) =>
@@ -379,88 +367,124 @@ export default function TvPage() {
             </>
           )}
         </section>
-        <section className="tv-panel">
-          <header>
-            <h2>Afvalophalingen</h2>
-          </header>
-          {waste.length ? (
-            waste.map((e, i) => (
-              <article
-                className={`tv-waste ${Date.parse(e.date) - Date.parse(day) <= DAY ? "soon" : ""}`}
-                key={i}
-              >
-                <strong>{e.label}</strong>
-                <span>
-                  {fmt(e.date)} · {e.time}
-                </span>
-                <small>
-                  {e.date === day
-                    ? "Vandaag"
-                    : Date.parse(e.date) - Date.parse(day) === DAY
-                      ? "Morgen · klaarzetten"
-                      : ""}
-                </small>
-              </article>
-            ))
-          ) : (
-            <p className="tv-empty">
-              Geen toekomstige ophalingen ingesteld voor dit bedrijf.
-            </p>
-          )}
-        </section>
+        <div className="tv-center">
+          {" "}
+          <section className="tv-panel">
+            <header>
+              <h2>
+                {settings.selection === "execution"
+                  ? "In uitvoering"
+                  : "Open projecten"}
+              </h2>
+              <span>
+                Pagina {(page % pages) + 1}/{pages}
+              </span>
+            </header>
+            <div className="tv-table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Planning</th>
+                    <th>Nummer</th>
+                    <th>Klant</th>
+                    <th>Omschrijving</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {current
+                    .slice((page % pages) * 8, (page % pages) * 8 + 8)
+                    .map(row)}
+                </tbody>
+              </table>
+            </div>
+            {!current.length && (
+              <p className="tv-empty">
+                {connected
+                  ? "Geen lopende projecten in deze selectie."
+                  : "Projecten verborgen tot de verbinding hersteld is."}
+              </p>
+            )}
+          </section>
+          <section className="tv-panel tv-planning">
+            <header>
+              <h2>Planning · komende 12 maanden</h2>
+              <span>
+                {selected.filter((p) => !planned(p)).length} zonder bronplanning
+              </span>
+            </header>
+            <div className="tv-chart">
+              {months.map((m) => (
+                <div key={m.key}>
+                  <strong>{m.count}</strong>
+                  <i
+                    style={{ height: `${Math.max(3, (m.count / max) * 65)}px` }}
+                  />
+                  <span>{m.label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+        <div className="tv-right">
+          {" "}
+          <section className="tv-panel">
+            <header>
+              <h2>Komt eraan</h2>
+              <span>
+                {(page % upPages) + 1}/{upPages}
+              </span>
+            </header>
+            {groups.upcoming
+              .slice((page % upPages) * 6, (page % upPages) * 6 + 6)
+              .map((p) => (
+                <article className="tv-upcoming" key={p.id}>
+                  <time>{fmt(planned(p))}</time>
+                  <div>
+                    <strong>{p.customer || p.name}</strong>
+                    <p>
+                      {p.externalId} · {p.sourceDescription || p.name}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            {!groups.upcoming.length && (
+              <p className="tv-empty">Geen toekomstige planning.</p>
+            )}
+          </section>
+          <section className="tv-panel tv-waste-panel">
+            <header>
+              <h2>Afvalophaling</h2>
+              <span className="tv-waste-icon" aria-hidden="true">
+                ♻
+              </span>
+            </header>
+            {waste.length ? (
+              waste.map((e, i) => (
+                <article
+                  className={`tv-waste ${Date.parse(e.date) - Date.parse(day) <= DAY ? "soon" : ""}`}
+                  key={i}
+                >
+                  <strong>{e.label}</strong>
+                  <span>
+                    {fmt(e.date)} <time>{e.time}</time>
+                  </span>
+                  <small>
+                    {e.date === day
+                      ? "Vandaag"
+                      : Date.parse(e.date) - Date.parse(day) === DAY
+                        ? "Morgen · klaarzetten"
+                        : ""}
+                  </small>
+                </article>
+              ))
+            ) : (
+              <p className="tv-empty">
+                Geen toekomstige ophalingen ingesteld voor dit bedrijf.
+              </p>
+            )}
+          </section>
+        </div>
       </div>
-      <section className="tv-panel tv-nas">
-        <div>
-          <h2>NAS-monitoring</h2>
-          <p>
-            {nasOk
-              ? {
-                  ok: "Belasting gezond",
-                  warning: "Belasting verhoogd",
-                  critical: "Hoge belasting",
-                  unknown: "Meting controleren",
-                }[nas!.status] || "Meting controleren"
-              : "Geen actuele, bevestigde meting"}
-          </p>
-        </div>
-        <div className="tv-nas-values">
-          CPU {nasOk ? pct(nas?.latest.cpu) : "—"} · RAM{" "}
-          {nasOk ? pct(nas?.latest.ram) : "—"} · Schijf{" "}
-          {nasOk ? pct(nas?.latest.disk) : "—"} · I/O{" "}
-          {nasOk ? pct(nas?.latest.io) : "—"}
-          <small>24 uur · groen CPU · blauw RAM</small>
-        </div>
-        <svg
-          viewBox="0 0 300 50"
-          role="img"
-          aria-label="NAS-belasting in de laatste 24 uur"
-        >
-          {(["cpu", "ram"] as const).map((key) => {
-            let previous = 0;
-            const d = (nas?.history || [])
-              .filter((p) => Date.parse(p.checkedAt) >= now - DAY)
-              .sort((a, b) => a.checkedAt.localeCompare(b.checkedAt))
-              .map((p) => {
-                const t = Date.parse(p.checkedAt),
-                  v = p[key];
-                if (v == null) return "";
-                const op = previous && t - previous <= 660000 ? "L" : "M";
-                previous = t;
-                return `${op}${Math.max(0, Math.min(300, ((t - now + DAY) / DAY) * 300)).toFixed(1)},${(48 - v * 0.46).toFixed(1)}`;
-              })
-              .join(" ");
-            return (
-              <path
-                key={key}
-                d={d}
-                fill="none"
-                stroke={key === "cpu" ? "#40d799" : "#39baff"}
-                strokeWidth="1.5"
-              />
-            );
-          })}
-        </svg>
-      </section>
       <footer className="tv-footer">
         Automatisch verversen elke 15 seconden · Rotatie elke{" "}
         {settings.rotationSeconds} seconden · Alleen projecten binnen je
