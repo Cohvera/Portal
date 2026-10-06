@@ -1,6 +1,6 @@
 # Tv-scherm in Cohvera
 
-Open **Tv-scherm** in de zijbalk of `/projects/tv`. Je blijft aangemeld met Microsoft. De selector bevat uitsluitend je toegankelijke bedrijven; de API controleert `projects.read` per bedrijf. Instellingen wijzigen vereist `projects.manage`.
+Open **Tools & Solutions → Tv-scherm** of `/projects/tv`. Je blijft aangemeld met Microsoft. De selector bevat uitsluitend je toegankelijke bedrijven; de API controleert `projects.read` per bedrijf. Instellingen wijzigen vereist `projects.manage`.
 
 ## Overgenomen werking
 

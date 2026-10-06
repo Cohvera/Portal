@@ -184,7 +184,7 @@ export default function TvPage() {
         </div>
       </header>
       <div className="tv-toolbar">
-        <Link href="/projects">← Projecten</Link>
+        <Link href="/tools">← Tools & Solutions</Link>
         <span>
           {settings.selection === "execution"
             ? "In uitvoering"

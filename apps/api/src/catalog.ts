@@ -16,6 +16,7 @@ import { prisma, Prisma } from "@cohvera/database";
 import { portalAdmin } from "./auth/context";
 
 const builtinIds = new Set([
+  "tv-screen",
   "heat-loss",
   "warehouse-manager",
   "q-portal",

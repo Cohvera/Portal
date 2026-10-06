@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useCompany } from "../PortalShell";
 import { tools, toolAvailability, isExternalTool } from "../../lib/tools";
 import { CATALOG_ENTRIES_KEY, TOOL_COMPANIES_KEY, TOOL_COMPANIES_EVENT, entryCompanies, readToolCompanies, readCatalog, toolMatchesCompany, notifyToolCompanies } from "../../lib/tool-companies";
-const symbols: Record<string,string> = {"heat-loss":"°C","warehouse-manager":"▦","q-portal":"Q","project-tasks":"✓","ventilation-cloud":"≋",inspections:"◎","solar-subcontracting":"☀","charging-workorders":"ϟ"};
+const symbols: Record<string,string> = {"tv-screen":"▣","heat-loss":"°C","warehouse-manager":"▦","q-portal":"Q","project-tasks":"✓","ventilation-cloud":"≋",inspections:"◎","solar-subcontracting":"☀","charging-workorders":"ϟ"};
 type CustomEntry = { id: string; name: string; description: string; href: string; companyCode: string; companyCodes?: string[]; kind: "tool" | "integration" };
 const storageKey = CATALOG_ENTRIES_KEY;
 const integrations = [

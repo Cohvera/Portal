@@ -12,6 +12,12 @@ export type ToolModule = {
 
 export const tools: ToolModule[] = [
   {
+    slug: "tv-screen", name: "Tv-scherm", category: "Projectmanagement", href: "/projects/tv",
+    description: "Toon projecten, planning, voertuigen en ophalingen op een bedrijfsscherm, afgestemd op je bedrijfsselectie en accountrechten.",
+    status: "MVP", actions: ["Bedrijfsoverzicht", "Automatische schermrotatie", "Volledig scherm"],
+    workflow: ["Bedrijf kiezen", "Scherm instellen", "Overzicht tonen"]
+  },
+  {
     slug: "heat-loss", name: "Warmteverliescalculator", category: "Engineering",
     description: "Breng het warmteverlies per ruimte in kaart en bereid de dimensionering van verwarming en warmtepompen voor.",
     status: "Planned", actions: ["Berekening per ruimte", "Overzicht van het gebouw", "Rapport voor het dossier"],

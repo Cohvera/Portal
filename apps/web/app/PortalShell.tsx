@@ -132,7 +132,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   };
   const links = [
     { href: "/", name: "Overzicht" },
-    ...(can("projects.read") ? [{ href: "/projects", name: "Projecten" }, {href:"/projects/tv",name:"Tv-scherm"}] : []),
+    ...(can("projects.read") ? [{ href: "/projects", name: "Projecten" }] : []),
     ...(can("tasks.read") ? [{ href: "/tasks", name: "Mijn taken" }] : []),
     ...coefHubs.map((h) => ({ href: `/hubs/${h.slug}`, name: h.name })),
     { href: "/tools", name: "Tools & Solutions" },
