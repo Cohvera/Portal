@@ -31,3 +31,14 @@
 @media(max-width:600px){.projects-status-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.projects-status-tile{padding:14px;gap:12px}.projects-status-tile strong{font-size:25px}.projects-filter-bar{grid-template-columns:1fr}.projects-list-card{padding:14px}.projects-results-heading{flex-wrap:wrap}}
 
 .projects-closed-flag{display:flex;gap:8px;align-items:center;font-size:13px;white-space:nowrap}.projects-closed-flag input{accent-color:#16834b;width:16px;height:16px}
+
+.projects-plenion-details{margin-top:10px;font-size:13px;line-height:1.5}
+.projects-plenion-details summary{cursor:pointer;color:#3046b8;font-weight:600;min-height:28px}
+.projects-plenion-details summary:focus-visible{outline:3px solid #8195f2;outline-offset:3px}
+.projects-plenion-details[open]{padding:12px;border:1px solid #dce4ef;border-radius:10px;background:#f7f9fc}
+.projects-plenion-details p{color:#586780;font-size:12px;margin:10px 0}
+.projects-plenion-details dl{margin:0}
+.projects-plenion-details dl>div{padding:8px 0;border-bottom:1px solid #e3e9f2}
+.projects-plenion-details dt{font-weight:600;color:#34435b}
+.projects-plenion-details code{display:block;font-size:11px;font-weight:400;color:#69758b}
+.projects-plenion-details dd{margin:3px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;color:#12213a}

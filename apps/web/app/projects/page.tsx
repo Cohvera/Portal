@@ -8,6 +8,7 @@ import {
 } from "../../lib/projects";
 import { filterProjects, projectScope, projectStatus, type ProjectFilters } from "../../lib/project-overview";
 import "./projects.css";
+import { PlenionProjectDetails } from "./PlenionProjectDetails";
 import { useCompany } from "../PortalShell";
 
 export default function ProjectsPage() {
@@ -161,6 +162,11 @@ export default function ProjectsPage() {
               </button>
             ))}
           </div>
+          {projects.some(p => projectScope(p) === "unknown") && (
+            <div className="alert" role="status">
+              Bij {projects.filter(p => projectScope(p) === "unknown").length} Plenion-projecten is het afsluitveld nog niet ontvangen. Daarom staan ze bij ‘Nog niet bevestigd’. Open ‘Gegevens uit Plenion’ bij een project om te zien welke velden beschikbaar zijn. Laat de bijgewerkte Q-box opnieuw importeren in datahub-modus om de bronstatus en afsluitvinkjes aan te vullen.
+            </div>
+          )}
           <div className="card projects-list-card">
             <div className="projects-filter-bar">
               <label className="projects-search">Zoeken
@@ -197,7 +203,7 @@ export default function ProjectsPage() {
                   <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Afgesloten</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
                   <tbody>{filteredProjects.map(p => (
                     <tr key={p.id}>
-                      <td><strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}</td>
+                      <td><strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}{p.externalSource === "PLENION" && <PlenionProjectDetails project={p} />}</td>
                       <td><span className="project-status"><span style={{backgroundColor:p.externalSource === "PLENION" ? (projectScope(p) === "closed" ? "#16834b" : "#2563eb") : p.statusColor || projectStatuses[p.status]}} />{projectStatus(p)}</span></td>
                       <td>{projectScope(p) === "unknown" ? <span className="muted">Nog niet bevestigd</span> : <label className="projects-closed-flag"><input type="checkbox" checked={projectScope(p) === "closed"} disabled aria-label={`${p.name}: afgesloten volgens ${p.externalSource === "PLENION" ? "Plenion" : "portaalstatus"}`} />{projectScope(p) === "closed" ? "Ja" : "Nee"}</label>}</td>
                       <td><span className={!p.owner.trim() ? "muted" : ""}>{p.owner || "Nog toe te wijzen"}</span></td>

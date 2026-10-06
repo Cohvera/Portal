@@ -14,6 +14,25 @@ def fixture():
     return data,status
 
 class Tests(unittest.TestCase):
+    def test_optional_tv_upload_is_independent_and_whitelists(self):
+        config=dict(tv_enabled=True,source='http://lan/projecten-tv',ca=None,destination='https://portal.example',key='x'*43,nas_url=None)
+        fleet=dict(schema_version=2,source_kind='central_datahub',snapshot_id='test',source_observed_at='2026-10-06T03:00:00Z',vehicles=[dict(plate='TEST',name='Test',source_id='1',next_inspection='',private='omit')])
+        with patch.object(q,'read_json',side_effect=[fleet,dict(accepted=True)]) as read:
+            q.sync_tv(config)
+            payload=read.call_args.kwargs['payload']
+            self.assertNotIn('private',payload['fleet']['vehicles'][0])
+            self.assertIsNone(payload['nas'])
+            self.assertEqual(read.call_args.args[0],'https://portal.example/api/integrations/qbox/tv')
+        with patch.object(q,'read_json',side_effect=[q.SyncError('offline'),dict(accepted=True)]) as read:
+            q.sync_tv(config)
+            self.assertIsNone(read.call_args.kwargs['payload']['fleet'])
+        with patch.object(q,'read_json') as read:
+            q.sync_tv(dict(tv_enabled=False))
+            read.assert_not_called()
+        with patch.object(q,'read_json',return_value=fleet) as read:
+            q.sync_tv(config,dry_run=True)
+            self.assertEqual(read.call_count,1)
+
     def test_http_source_but_https_destination(self):
         env=dict(QBOX_SOURCE_URL='http://www.tomme-energie.lan/projecten-tv',QBOX_SOURCE_CA_FILE='/missing/ca.pem',QBOX_PORTAL_URL='https://portal.example',QBOX_IMPORT_API_KEY='x'*43)
         with patch.dict(os.environ,env,clear=True):

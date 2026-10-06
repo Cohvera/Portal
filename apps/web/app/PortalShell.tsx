@@ -29,6 +29,7 @@ const CompanyContext = createContext({
   companies: [] as Company[],
   companyCode: "",
   canManageCatalog: false,
+  selectCompany: (_code: string): void => {},
   can: (_permission: string, _companyCode?: string): boolean => false,
 });
 export const useCompany = () => useContext(CompanyContext);
@@ -123,9 +124,15 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     const access = identity.businessAccess.find((a) => a.companyCode === code);
     return !!access && (access.businessAdmin || access.permissions.includes(permission));
   };
+  const selectCompany = (code: string) => {
+    if (!identity.companies.some(c => c.code === code)) return;
+    setCompanyCode(code);
+    localStorage.setItem("cohvera.companyCode", code);
+    void fetch(`/api/companies/${encodeURIComponent(code)}/select`, {method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+  };
   const links = [
     { href: "/", name: "Overzicht" },
-    ...(can("projects.read") ? [{ href: "/projects", name: "Projecten" }] : []),
+    ...(can("projects.read") ? [{ href: "/projects", name: "Projecten" }, {href:"/projects/tv",name:"Tv-scherm"}] : []),
     ...(can("tasks.read") ? [{ href: "/tasks", name: "Mijn taken" }] : []),
     ...coefHubs.map((h) => ({ href: `/hubs/${h.slug}`, name: h.name })),
     { href: "/tools", name: "Tools & Solutions" },
@@ -161,9 +168,10 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         companyCode,
         canManageCatalog: identity.canManageCatalog,
         can,
+        selectCompany,
       }}
     >
-      <div className="shell">
+      <div className={`shell ${pathname === "/projects/tv" ? "shell-tv" : ""}`}>
         <button
           className="mobile-menu"
           aria-expanded={open}
@@ -189,18 +197,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
             className="company-select"
             value={companyCode}
             disabled={!identity.companies.length}
-            onChange={(e) => {
-              setCompanyCode(e.target.value);
-              localStorage.setItem("cohvera.companyCode", e.target.value);
-              void fetch(
-                `/api/companies/${encodeURIComponent(e.target.value)}/select`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: "{}",
-                },
-              );
-            }}
+            onChange={(e) => selectCompany(e.target.value)}
           >
             {identity.companies.length ? (
               identity.companies.map((c) => (

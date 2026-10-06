@@ -67,7 +67,7 @@ def settings():
     if mode not in ("tv", "datahub"):
         raise SyncError("QBOX_SOURCE_MODE moet tv of datahub zijn")
     hub = https_url(os.environ.get("QBOX_DATAHUB_URL", "http://192.168.10.228:3210"), allow_http=True)
-    return dict(key=key, source=source, destination=destination, interval=interval, mode=mode, hub=hub,
+    return dict(tv_enabled=os.environ.get("QBOX_TV_ENABLED", "0") == "1", nas_url=https_url(os.environ["QBOX_NAS_URL"], allow_http=True) if os.environ.get("QBOX_NAS_URL") else None, key=key, source=source, destination=destination, interval=interval, mode=mode, hub=hub,
                 ca=(os.environ.get("QBOX_SOURCE_CA_FILE") or None) if urlsplit(hub if mode == "datahub" else source).scheme == "https" else None,
                 state=Path(os.environ.get("QBOX_STATE_FILE", "/var/lib/cohvera-qbox/state.json")))
 
@@ -240,6 +240,38 @@ def sync_once(config, dry_run=False, force=False):
     return "accepted"
 
 
+def sync_tv(config, dry_run=False):
+    if not config.get("tv_enabled"):
+        return
+    payload = {"fleet": None, "nas": None}
+    try:
+        fleet = read_json(config["source"] + "/tv-vehicles.json", ca=config["ca"])
+        if not isinstance(fleet, dict) or not isinstance(fleet.get("vehicles"), list):
+            raise SyncError("Ongeldige voertuigenbron")
+        payload["fleet"] = {k: fleet.get(k) for k in ("schema_version", "source_kind", "snapshot_id", "source_observed_at")}
+        payload["fleet"]["vehicles"] = [{k: row.get(k) for k in ("plate", "name", "next_inspection", "source_id")} for row in fleet["vehicles"] if isinstance(row, dict)]
+    except SyncError:
+        LOG.warning("Voertuigenbron niet beschikbaar; tv toont geen bevestigde voertuigen")
+    if config.get("nas_url"):
+        try:
+            nas = read_json(config["nas_url"], ca=config["ca"])
+            if not isinstance(nas, dict):
+                raise SyncError("Ongeldige NAS-bron")
+            latest = nas.get("latest") or {}
+            payload["nas"] = {"status": nas.get("status"), "loggingOk": nas.get("loggingOk"),
+                "latest": {k: latest.get(k) for k in ("checkedAt", "cpu", "memory", "disk")},
+                "history": [{k: row.get(k) for k in ("checkedAt", "cpu", "ram")} for row in nas.get("history", [])[-400:] if isinstance(row, dict)]}
+        except (SyncError, TypeError, AttributeError):
+            LOG.warning("NAS-bron niet beschikbaar; tv toont geen actuele NAS-meting")
+    if dry_run:
+        LOG.info("TV-bronnen gelezen: voertuigen %s, NAS %s; niets verstuurd", payload["fleet"] is not None, payload["nas"] is not None)
+        return
+    result = read_json(config["destination"] + "/api/integrations/qbox/tv", payload=payload, key=config["key"])
+    if not isinstance(result, dict) or result.get("accepted") is not True:
+        raise SyncError("Cohvera heeft de tv-gegevens niet bevestigd")
+    LOG.info("Cohvera bevestigt tv-gegevens: voertuigen %s, NAS %s", payload["fleet"] is not None, payload["nas"] is not None)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true", help="Eén poging, exitcode 1 bij fout")
@@ -264,6 +296,11 @@ def main():
         except (SyncError, OSError) as error:
             # OS errors can contain file paths but not credentials or payloads.
             LOG.error("Synchronisatie mislukt: %s", error if isinstance(error, SyncError) else "Lokale status kon niet opgeslagen worden")
+            failures += 1
+        try:
+            sync_tv(config, args.dry_run)
+        except (SyncError, OSError) as error:
+            LOG.error("TV-synchronisatie mislukt: %s", error if isinstance(error, SyncError) else "Lokale fout")
             failures += 1
         if args.once or args.dry_run:
             return 1 if failures else 0

@@ -1,5 +1,7 @@
 import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Param, Post, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { createHash, timingSafeEqual } from "node:crypto";
+import { tvTelemetry } from "../tv";
+import { Prisma } from "@cohvera/database";
 import { prisma } from "@cohvera/database";
 
 export function verifyQboxKey(value: unknown) {
@@ -51,6 +53,17 @@ export function validateSnapshot(value: unknown, now = Date.now()) {
 
 @Controller("integrations/qbox")
 export class QboxImportController {
+  @Post("tv")
+  async tv(@Body() body: unknown) {
+    const companyCode=qboxCompanyCode();
+    const company=await prisma.company.findUnique({where:{code:companyCode}});
+    if(!company?.isActive) throw new ForbiddenException("Het ingestelde doelbedrijf is niet actief.");
+    const parsed=tvTelemetry(body);
+    const data={fleet:parsed.fleet ?? Prisma.DbNull,nas:parsed.nas ?? Prisma.DbNull,receivedAt:new Date()};
+    await prisma.tvBoard.upsert({where:{companyCode},create:{companyCode,...data},update:data});
+    return {accepted:true};
+  }
+
   @Post("plenion/projects")
   async ingest(@Body() body: unknown) {
     const snapshot = validateSnapshot(body);

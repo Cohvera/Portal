@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { TvController } from "./tv";
 import { QboxImportController, PlenionStatusController } from "./integrations/qbox";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -400,7 +401,7 @@ class AppController {
 
 @Module({
   controllers: [
-    QboxImportController, PlenionStatusController,
+    QboxImportController, PlenionStatusController, TvController,
     AuthController,
     AccountsController,
     InspectionsController,

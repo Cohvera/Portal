@@ -27,6 +27,7 @@ model Company {
   isActive      Boolean             @default(true)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+  tvBoard       TvBoard?
   projects      Project[]
   memberships   CompanyMembership[]
   pluginLinks   CompanyPlugin[]
@@ -283,4 +284,13 @@ model ProcessRegister {
   verification String @default("")
   version Int @default(1)
   updatedAt DateTime @updatedAt
+}
+
+model TvBoard {
+  companyCode String @id
+  company Company @relation(fields: [companyCode], references: [code], onDelete: Cascade)
+  settings Json @default("{}")
+  fleet Json?
+  nas Json?
+  receivedAt DateTime?
 }
