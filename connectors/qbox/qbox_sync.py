@@ -38,14 +38,14 @@ def timestamp(value):
         raise SyncError("Ongeldige brondatum") from None
 
 
-def https_url(value):
+def https_url(value, *, allow_http=False):
     try:
         u = urlsplit(value)
-        if u.scheme != "https" or not u.hostname or u.username or u.password or u.query or u.fragment:
+        if u.scheme not in (("https", "http") if allow_http else ("https",)) or not u.hostname or u.username or u.password or u.query or u.fragment:
             raise ValueError()
         u.port
     except ValueError:
-        raise SyncError("Bron en bestemming moeten geldige HTTPS-adressen zijn") from None
+        raise SyncError("Ongeldig adres: alleen de LAN-bron mag HTTP gebruiken; Cohvera vereist HTTPS") from None
     return value.rstrip("/")
 
 
@@ -53,7 +53,7 @@ def settings():
     key = os.environ.get("QBOX_IMPORT_API_KEY", "")
     if not re.fullmatch(r"[A-Za-z0-9_-]{43,128}", key):
         raise SyncError("QBOX_IMPORT_API_KEY ontbreekt of is ongeldig")
-    source = https_url(os.environ.get("QBOX_SOURCE_URL", "https://www.tomme-energie.lan/projecten-tv"))
+    source = https_url(os.environ.get("QBOX_SOURCE_URL", "https://www.tomme-energie.lan/projecten-tv"), allow_http=True)
     destination = https_url(os.environ.get("QBOX_PORTAL_URL", ""))
     if urlsplit(destination).path not in ("", "/"):
         raise SyncError("QBOX_PORTAL_URL moet het portaaladres zonder /api zijn")
@@ -64,11 +64,13 @@ def settings():
     except ValueError:
         raise SyncError("QBOX_POLL_SECONDS moet tussen 30 en 3600 liggen") from None
     return dict(key=key, source=source, destination=destination, interval=interval,
-                ca=os.environ.get("QBOX_SOURCE_CA_FILE") or None,
+                ca=(os.environ.get("QBOX_SOURCE_CA_FILE") or None) if urlsplit(source).scheme == "https" else None,
                 state=Path(os.environ.get("QBOX_STATE_FILE", "/var/lib/cohvera-qbox/state.json")))
 
 
 def read_json(url, *, ca=None, payload=None, key=None):
+    if payload is not None or key is not None:
+        https_url(url)  # Never transmit import credentials over HTTP.
     headers = {"Accept": "application/json", "User-Agent": "Cohvera-Qbox/1"}
     body = None
     if payload is not None:
@@ -77,7 +79,7 @@ def read_json(url, *, ca=None, payload=None, key=None):
             raise SyncError("Export is te groot")
         headers.update({"Content-Type": "application/json", "X-Qbox-Key": key})
     try:
-        context = ssl.create_default_context(cafile=ca)
+        context = ssl.create_default_context(cafile=ca if urlsplit(url).scheme == "https" else None)
         # Direct connection; never send the key through an environment-configured proxy.
         opener = build_opener(ProxyHandler({}), NoRedirect, HTTPSHandler(context=context))
         with opener.open(Request(url, data=body, headers=headers), timeout=90 if body else 15) as response:
@@ -140,7 +142,7 @@ def validate(data, status, now=None):
             "projects":[{k:p[k] for k in ("number","customer","description","planned","status_label","evidence","active","is_current","closed")} for p in sorted(projects,key=lambda p:p["number"])]}
 
 
-def sync_once(config, dry_run=False):
+def sync_once(config, dry_run=False, force=False):
     data = read_json(config["source"] + "/tv-project-data.json", ca=config["ca"])
     status = read_json(config["source"] + "/tv-refresh-status.json", ca=config["ca"])
     payload = validate(data, status)
@@ -154,7 +156,7 @@ def sync_once(config, dry_run=False):
         state = {}
     # Reconfirm every six hours, also after key/destination changes or loss of local state.
     target = hashlib.sha256((config["destination"] + config["key"]).encode()).hexdigest()
-    if isinstance(state, dict) and state.get("digest") == digest and state.get("target") == target and isinstance(state.get("sent_at"), (int,float)) and 0 <= time.time()-state["sent_at"] < 21600:
+    if not force and isinstance(state, dict) and state.get("digest") == digest and state.get("target") == target and isinstance(state.get("sent_at"), (int,float)) and 0 <= time.time()-state["sent_at"] < 21600:
         return "unchanged"
     result = read_json(config["destination"] + "/api/integrations/qbox/plenion/projects", payload=payload, key=config["key"])
     if result.get("accepted") is not True or result.get("snapshotId") != payload["snapshot_id"] or result.get("count") != len(payload["projects"]):
@@ -172,7 +174,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true", help="Eén poging, exitcode 1 bij fout")
     parser.add_argument("--dry-run", action="store_true", help="Bron controleren; niets versturen of opslaan")
+    parser.add_argument("--force", action="store_true", help="Met --once: verstuur ook een ongewijzigde bronstand opnieuw")
     args = parser.parse_args()
+    if args.force and not args.once:
+        parser.error("Gebruik --force alleen samen met --once")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     try:
         config = settings()
@@ -184,7 +189,7 @@ def main():
     failures = 0
     while not STOP.is_set():
         try:
-            sync_once(config, args.dry_run)
+            sync_once(config, args.dry_run, args.force)
             failures = 0
         except (SyncError, OSError) as error:
             # OS errors can contain file paths but not credentials or payloads.

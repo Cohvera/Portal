@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +14,22 @@ def fixture():
     return data,status
 
 class Tests(unittest.TestCase):
+    def test_http_source_but_https_destination(self):
+        env=dict(QBOX_SOURCE_URL='http://www.tomme-energie.lan/projecten-tv',QBOX_SOURCE_CA_FILE='/missing/ca.pem',QBOX_PORTAL_URL='https://portal.example',QBOX_IMPORT_API_KEY='x'*43)
+        with patch.dict(os.environ,env,clear=True):
+            config=q.settings()
+            self.assertIsNone(config['ca'])
+            self.assertTrue(config['source'].startswith('http://'))
+            with patch.dict(os.environ,QBOX_PORTAL_URL='http://portal.example'):
+                with self.assertRaises(q.SyncError): q.settings()
+        with patch.object(q,'build_opener') as opener:
+            with self.assertRaises(q.SyncError): q.read_json('http://portal.example/import',payload={},key='x'*43)
+            opener.assert_not_called()
+            opener.return_value.open.return_value.__enter__.return_value.read.return_value=b'{}'
+            self.assertEqual(q.read_json(env['QBOX_SOURCE_URL'],ca='/missing/ca.pem'),{})
+            req=opener.return_value.open.call_args.args[0]
+            self.assertIsNone(req.get_header('X-qbox-key'))
+
     def test_validation(self):
         data,status=fixture()
         self.assertEqual(len(q.validate(data,status)['projects']),1)
@@ -34,6 +51,9 @@ class Tests(unittest.TestCase):
             with patch.object(q,'read_json',side_effect=[data,status]) as call:
                 self.assertEqual(q.sync_once(config),'unchanged')
                 self.assertEqual(call.call_count,2)
+            with patch.object(q,'read_json',side_effect=[data,status,dict(accepted=True,snapshotId='test',count=1,duplicate=True)]) as call:
+                self.assertEqual(q.sync_once(config,force=True),'accepted')
+                self.assertEqual(call.call_count,3)
             config['state'].unlink()
             with patch.object(q,'read_json',side_effect=[data,status,q.SyncError('HTTP 503')]):
                 with self.assertRaises(q.SyncError): q.sync_once(config)

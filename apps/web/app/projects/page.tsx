@@ -27,7 +27,7 @@ export default function ProjectsPage() {
   const [plenion, setPlenion] = useState<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number} | null>(null);
   useEffect(() => {
     setPlenion(null);
-    if (companyCode !== "TOMME") return;
+    if (!companyCode) return;
     const controller = new AbortController();
     request<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number}>(`/api/companies/${encodeURIComponent(companyCode)}/integrations/plenion/status`, {signal:controller.signal})
       .then(setPlenion).catch(() => {});
@@ -111,7 +111,7 @@ export default function ProjectsPage() {
           + Nieuw project
         </button>
       </header>
-      {companyCode === "TOMME" && plenion?.connected && (
+      {plenion?.connected && (
         <div className={plenion.stale ? "alert" : "success-box"} role="status">
           Plenion via Q-box · {plenion.projectCount} projecten in de laatste export · Bronstand {plenion.sourceObservedAt ? new Date(plenion.sourceObservedAt).toLocaleString("nl-BE") : "onbekend"}.
           {plenion.stale && " De bronstand is ouder dan 24 uur; bestaande projecten blijven beschikbaar."}

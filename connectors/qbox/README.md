@@ -16,8 +16,8 @@ Plenion → bestaande Central Data Hub/export op het LAN
 
 De connector schrijft nooit naar Plenion, HFSQL of de LAN-export. Hij leest alleen:
 
-- `https://www.tomme-energie.lan/projecten-tv/tv-project-data.json`
-- `https://www.tomme-energie.lan/projecten-tv/tv-refresh-status.json`
+- `http://www.tomme-energie.lan/projecten-tv/tv-project-data.json`
+- `http://www.tomme-energie.lan/projecten-tv/tv-refresh-status.json`
 
 Dit is de selectie **In Uitvoering**, niet alle Plenion-projecten. Voertuigen, documenten en andere gegevens worden in deze eerste versie niet verstuurd. Per minuut wordt de bron gecontroleerd. Alleen gewijzigde gegevens worden verstuurd; ongewijzigde gegevens worden na zes uur opnieuw bevestigd. Dit maakt de dagelijkse Plenion-bronkopie niet realtime.
 
@@ -54,7 +54,7 @@ docker compose -f docker-compose.yml -f docker-compose.warehouse.yml up -d --bui
 docker compose -f docker-compose.yml -f docker-compose.warehouse.yml ps
 ```
 
-Behoud eventuele andere bestaande compose-overrides. De importsleutel werkt uitsluitend op `POST /api/integrations/qbox/plenion/projects`. De gebruiker hoeft hiervoor geen nieuwe Entra-rol te krijgen. Het bedrijf `TOMME` moet bestaan en actief zijn.
+Behoud eventuele andere bestaande compose-overrides. De importsleutel werkt uitsluitend op `POST /api/integrations/qbox/plenion/projects`. De gebruiker hoeft hiervoor geen nieuwe Entra-rol te krijgen. Het ingestelde doelbedrijf moet bestaan en actief zijn. Standaard is dit `TOMME`.
 
 ## 2. Zet de connector op de Q-box — vanaf je Mac
 
@@ -81,33 +81,32 @@ sudo install -d -m 700 /var/lib/cohvera-qbox
 
 Python moet versie 3.10 of hoger zijn. Op een recente Debian/Ubuntu-installatie kan je zo nodig `sudo apt install python3 ca-certificates` uitvoeren. Er is geen `pip install` nodig.
 
-## 3. Vertrouw het interne certificaat en stel de Q-box in
+## 3. Stel de Q-box in — interne bron via HTTP
 
-De LAN-website gebruikt een certificaat dat niet door de standaard vertrouwenslijst van deze Mac werd herkend. Vraag de netwerkbeheerder om het **CA-certificaat in PEM-formaat** dat de LAN-site heeft uitgegeven, en plaats het op de Q-box als:
+De LAN-export is getest via HTTP en geeft `200 OK`. Hiervoor is geen CA-certificaat nodig. Alleen het lezen op het bedrijfsnetwerk gebruikt HTTP; de overdracht naar Cohvera blijft HTTPS.
 
-```text
-/etc/cohvera-qbox/lan-ca.pem
-```
-
-Dit is een openbaar CA-certificaat, geen private sleutel. Maak het leesbaar voor de service:
+**Op de Q-box:**
 
 ```sh
-sudo chmod 644 /etc/cohvera-qbox/lan-ca.pem
 sudo nano /etc/cohvera-qbox/qbox.env
 ```
 
-Vul in:
+Vul in (behoud je bestaande importsleutel als die al ingesteld is):
 
 ```dotenv
-QBOX_SOURCE_URL=https://www.tomme-energie.lan/projecten-tv
-QBOX_SOURCE_CA_FILE=/etc/cohvera-qbox/lan-ca.pem
+QBOX_SOURCE_URL=http://www.tomme-energie.lan/projecten-tv
+QBOX_SOURCE_CA_FILE=
 QBOX_PORTAL_URL=https://portal.cohvera.be
 QBOX_IMPORT_API_KEY=DEZELFDE_NIEUWE_SLEUTEL_ALS_IN_PORTAL
 QBOX_POLL_SECONDS=60
 QBOX_STATE_FILE=/var/lib/cohvera-qbox/state.json
 ```
 
-Gebruik jullie echte publieke portaaladres, zonder `/api`. Als het LAN-certificaat al door de Q-box vertrouwd wordt, mag `QBOX_SOURCE_CA_FILE` leeg blijven. Certificaatcontrole staat altijd aan, ook naar Cohvera. Redirects worden geweigerd, zodat de sleutel niet naar een andere host doorgestuurd wordt.
+Gebruik jullie echte publieke portaaladres, zonder `/api`. Opslaan: Ctrl+O, Enter, Ctrl+X. De importsleutel wordt uitsluitend naar Cohvera gestuurd, nooit naar de LAN-bron. Redirects worden geweigerd.
+
+Gebruik je later HTTPS voor de LAN-bron, stel dan `QBOX_SOURCE_URL=https://...` in. Als het interne certificaat niet standaard vertrouwd wordt, vraag dan de uitgevende CA in PEM-formaat aan de netwerkbeheerder. Plaats het leesbaar voor de service op `/etc/cohvera-qbox/lan-ca.pem` en vul dat pad in bij `QBOX_SOURCE_CA_FILE`. Certificaatcontrole naar Cohvera blijft altijd aan.
+
+**Bestaande installatie bijwerken:** kopieer de nieuwe `qbox_sync.py` naar de Q-box zoals in stap 2 en vervang `/opt/cohvera-qbox/qbox_sync.py` zoals onder Onderhoud. Alleen de URL aanpassen werkt niet met de eerdere scriptversie die uitsluitend HTTPS toeliet. Voer daarna de controle uit stap 4 uit en herstart de service met `sudo systemctl restart cohvera-qbox`.
 
 ## 4. Controleer de bron zonder gegevens te versturen
 
@@ -179,3 +178,25 @@ pnpm --filter @cohvera/web typecheck
 ```
 
 De tests gebruiken fictieve gegevens en nagebootste netwerk/database-antwoorden. Ze controleren authenticatie, bronvalidatie, dubbele imports, oudere snapshots, retries en behoud van lokale velden. De echte PostgreSQL-migratie en Q-box-installatie moeten afzonderlijk in de deploymentomgeving gecontroleerd worden.
+
+## Tijdelijk importeren onder Q-Home
+
+Voeg **op de Portal-server** aan de Portal `.env` toe:
+
+```dotenv
+QBOX_IMPORT_COMPANY=QHOME
+```
+
+Haal eerst de bijgewerkte code op en herbouw zoals in stap 1. Deze instelling hoort niet in de Q-box-configuratie. De bron blijft dezelfde Tomme-export; je maakt hem hiermee tijdelijk zichtbaar voor gebruikers met Q-Home-projectrechten. De importstatus verschijnt ook bij Q-Home.
+
+Een bedrijf wisselen verplaatst eerder geïmporteerde projecten niet: volgende imports worden onder het ingestelde bedrijf verwerkt. Zo blijven bestaande project- en Inventory-verwijzingen intact. Zet de waarde later terug op `TOMME` voor volgende imports daar; eventuele Q-Home-kopieën blijven bestaan.
+
+Heeft de Q-box deze bronstand al bevestigd, dan kan zijn lokale cache het opnieuw versturen uitstellen. Na bijwerken van het script kun je eenmalig forceren op de LoxBerry, zonder de bestaande status te verwijderen:
+
+```sh
+sudo systemctl stop cohvera-qbox
+sudo sh -c 'set -a; . /etc/cohvera-qbox/qbox.env; set +a; python3 /opt/cohvera-qbox/qbox_sync.py --once --force'
+sudo systemctl start cohvera-qbox
+```
+
+Nog geen bevestiging gezien? Controleer eerst `sudo systemctl status cohvera-qbox --no-pager` en `sudo journalctl -u cohvera-qbox -n 50 --no-pager`. Een ander doelbedrijf lost een netwerk-, bron- of sleutelfout niet op.

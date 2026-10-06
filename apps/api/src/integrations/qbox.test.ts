@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateSnapshot, verifyQboxKey, QboxImportController } from "./qbox";
+import { validateSnapshot, verifyQboxKey, qboxCompanyCode, QboxImportController } from "./qbox";
 import { PortalGuard } from "../auth/guard";
 import type { ExecutionContext } from "@nestjs/common";
 export function fixture(now = Date.now()) {
@@ -34,11 +34,13 @@ test("Q-box key is mandatory and only allows JSON imports, no read/admin access"
 test("Import upserts stable source IDs, preserves local fields and rejects older source", async () => {
   const { prisma } = await import("@cohvera/database");
   const original = prisma.$transaction;
+  const oldCompany = process.env.QBOX_IMPORT_COMPANY;
+  process.env.QBOX_IMPORT_COMPANY = "QHOME";
   let previous: any = null;
   const projects = new Map<string, any>();
   const tx = {
     $executeRaw: async () => 1,
-    company: {findUnique:async()=>({id:"company-tomme",isActive:true})},
+    company: {findUnique:async(args:any)=>{assert.equal(args.where.code,"QHOME");return {id:"company-qhome",isActive:true};}},
     qboxImport: {findUnique:async()=>previous,upsert:async(args:any)=>{previous=previous?{...previous,...args.update}:args.create;return previous;}},
     project: {upsert:async(args:any)=>{const key=args.where.companyId_externalSource_externalId.externalId;projects.set(key,projects.has(key)?{...projects.get(key),...args.update}:args.create);}},
   };
@@ -47,7 +49,8 @@ test("Import upserts stable source IDs, preserves local fields and rejects older
     const controller = new QboxImportController();
     const data = fixture();
     assert.equal((await controller.ingest(data)).duplicate,false);
-    assert.equal(projects.get("123").companyId,"company-tomme");
+    assert.equal(projects.get("123").companyId,"company-qhome");
+    assert.equal(previous.companyCode,"QHOME");
     projects.get("123").owner="Lokale verantwoordelijke";
     projects.get("123").name="Eigen titel";
     assert.equal((await controller.ingest(data)).duplicate,true);
@@ -60,5 +63,17 @@ test("Import upserts stable source IDs, preserves local fields and rejects older
     await assert.rejects(controller.ingest(data));
     await controller.ingest({...newer,source_observed_at:new Date(Date.parse(newer.source_observed_at)+10000).toISOString(),projects:[]});
     assert.equal(projects.size,1); // Missing from a filtered export is not a deletion.
-  } finally { prisma.$transaction=original; }
+  } finally { prisma.$transaction=original; if(oldCompany===undefined) delete process.env.QBOX_IMPORT_COMPANY; else process.env.QBOX_IMPORT_COMPANY=oldCompany; }
+});
+
+test("Import company is explicit server configuration with a Tomme default", () => {
+  const old = process.env.QBOX_IMPORT_COMPANY;
+  try {
+    delete process.env.QBOX_IMPORT_COMPANY;
+    assert.equal(qboxCompanyCode(),"TOMME");
+    process.env.QBOX_IMPORT_COMPANY="QHOME";
+    assert.equal(qboxCompanyCode(),"QHOME");
+    process.env.QBOX_IMPORT_COMPANY="UNKNOWN";
+    assert.throws(()=>qboxCompanyCode());
+  } finally { if(old===undefined) delete process.env.QBOX_IMPORT_COMPANY; else process.env.QBOX_IMPORT_COMPANY=old; }
 });

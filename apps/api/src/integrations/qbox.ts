@@ -8,6 +8,12 @@ export function verifyQboxKey(value: unknown) {
   if (typeof value !== "string" || value.length > 128 || !timingSafeEqual(createHash("sha256").update(value).digest(), createHash("sha256").update(key).digest()))
     throw new UnauthorizedException("Ongeldige Q-box sleutel.");
 }
+export function qboxCompanyCode() {
+  const code = process.env.QBOX_IMPORT_COMPANY || "TOMME";
+  if (!["TOMME", "QHOME", "WARCO"].includes(code))
+    throw new ServiceUnavailableException("Ongeldig doelbedrijf voor Q-box import.");
+  return code;
+}
 const fail = (): never => { throw new BadRequestException("Ongeldige of verouderde Plenion-export."); };
 const text = (v: unknown, max: number): string => typeof v === "string" && v.length <= max ? v : fail();
 export function validateSnapshot(value: unknown, now = Date.now()) {
@@ -38,14 +44,15 @@ export class QboxImportController {
   @Post("plenion/projects")
   async ingest(@Body() body: unknown) {
     const snapshot = validateSnapshot(body);
-    // This source is specifically Tomme's export. Neither payload nor key chooses a company.
+    // Only server configuration selects the destination; never trust a payload company.
+    const companyCode = qboxCompanyCode();
     return prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(71620501)`;
-      const company = await tx.company.findUnique({where:{code:"TOMME"}});
-      if (!company?.isActive) throw new ForbiddenException("Tomme Energie is niet actief.");
-      const previous = await tx.qboxImport.findUnique({where:{companyCode:"TOMME"}});
+      const company = await tx.company.findUnique({where:{code:companyCode}});
+      if (!company?.isActive) throw new ForbiddenException("Het ingestelde doelbedrijf is niet actief.");
+      const previous = await tx.qboxImport.findUnique({where:{companyCode}});
       if (previous && previous.sourceObservedAt > snapshot.sourceObservedAt) throw new ConflictException("Een nieuwere bronstand is al verwerkt.");
-      if (previous?.digest === snapshot.digest) return {accepted:true, duplicate:true, count:previous.projectCount, snapshotId:previous.snapshotId};
+      if (previous?.digest === snapshot.digest) return {accepted:true, companyCode, duplicate:true, count:previous.projectCount, snapshotId:previous.snapshotId};
       if (previous && previous.sourceObservedAt.getTime() === snapshot.sourceObservedAt.getTime()) throw new ConflictException("Dezelfde bronstand heeft andere inhoud. Controleer de export.");
       for (const p of snapshot.projects) {
         const source = {customer:p.customer, sourceDescription:p.description, sourcePlannedAt:p.planned ? new Date(p.planned) : null, sourceSeenAt:snapshot.sourceObservedAt};
@@ -56,8 +63,8 @@ export class QboxImportController {
           update:source,
         });
       }
-      await tx.qboxImport.upsert({where:{companyCode:"TOMME"},create:{companyCode:"TOMME",snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length},update:{snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length,receivedAt:new Date()}});
-      return {accepted:true,duplicate:false,count:snapshot.projects.length,snapshotId:snapshot.snapshotId};
+      await tx.qboxImport.upsert({where:{companyCode},create:{companyCode,snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length},update:{snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length,receivedAt:new Date()}});
+      return {accepted:true,companyCode,duplicate:false,count:snapshot.projects.length,snapshotId:snapshot.snapshotId};
     }, {timeout:60000});
   }
 }
