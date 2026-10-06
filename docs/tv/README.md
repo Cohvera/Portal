@@ -41,7 +41,7 @@ Projecten werken zodra de bestaande projectimport werkt. Voor de aanvullende wid
 **Vanaf je Mac:**
 
 ```sh
-scp /Users/milansaelens/Development/cohvera/Portal/connectors/qbox/qbox_sync.py loxberry@192.168.10.78:/tmp/qbox_sync.py
+scp /Users/milansaelens/Development/cohvera/qbox-connector/qbox_sync.py loxberry@192.168.10.78:/tmp/qbox_sync.py
 ssh loxberry@192.168.10.78
 ```
 
@@ -91,7 +91,9 @@ pnpm db:generate
 pnpm --filter @cohvera/api typecheck
 pnpm --filter @cohvera/web exec tsc --noEmit --incremental false
 pnpm --filter @cohvera/api exec tsx --test src/tv.test.ts src/integrations/qbox.test.ts ../web/lib/tv.test.ts
-python3 -m unittest discover -s connectors/qbox -p 'test_*.py'
+# Connector-tests in de aparte repository:
+cd ../qbox-connector
+python3 -m unittest discover -s . -p 'test_*.py'
 ```
 
 UI-controle gebeurt lokaal met fictieve API-antwoorden. De PostgreSQL-migratie en live Q-box/NAS-aanvoer moeten na deployment op de echte omgeving worden gecontroleerd.

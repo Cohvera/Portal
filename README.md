@@ -110,7 +110,7 @@ The earlier password-login experiment remains reverted. This implementation uses
 
 ## Q-box Plenion connector
 
-Een lichte Python-connector stuurt de bestaande LAN-projectexport via HTTPS naar Cohvera. Zie [installatie op Q-box en portaalserver](connectors/qbox/README.md).
+Een lichte Python-connector stuurt de bestaande LAN-projectexport via HTTPS naar Cohvera. De connector wordt onderhouden in [Cohvera/qbox-connector](https://github.com/Cohvera/qbox-connector). Zie [installatie op Q-box en portaalserver](https://github.com/Cohvera/qbox-connector/blob/main/docs/INSTALLATIE.md).
 
 ## Process Hub
 
