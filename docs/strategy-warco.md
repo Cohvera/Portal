@@ -14,8 +14,18 @@ it does not replace existing data or seed fictional progress.
 Access requires membership of active company `WARCO` and the relevant business
 permission. Existing company business administrators retain their existing
 bypass semantics. The portal-admin seed role receives the permissions like
-other permissions; ordinary viewer/employee/manager roles are NOT expanded.
-Assign the appropriate business role through existing access administration.
+other permissions; ordinary viewer/employee roles are NOT expanded.
+The manager role now receives strategy.read and strategy.manage. Viewer and
+employee roles do not. The default group mapping assigns SG-COHVERA-Management
+to WARCO as manager, retaining the existing manager permissions for projects
+and tasks. No company-admin or Portal.Admin role is granted by this mapping.
+Accounts administration is read-only; business assignments come from Entra.
+Assign SG-COHVERA-Management to the Enterprise Application using Portal.User
+and ensure direct membership and that its exact name appears in the signed
+groups claim. Sign out and in again after deployment and seed.
+If ENTRA_GROUP_MAPPINGS is explicitly configured, preserve its existing entries
+and add {"groupName":"SG-COHVERA-Management","companyCode":"WARCO","roleKey":"manager"}.
+An explicit override replaces the defaults; an empty list still disables them.
 An Entra Portal.Admin role alone does not grant Warco business access.
 
 ## Data and API

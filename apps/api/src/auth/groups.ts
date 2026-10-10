@@ -17,6 +17,7 @@ export const defaultGroupMappings = [
   { groupName: "SG-QHOME-All", companyCode: "QHOME", roleKey: "employee" },
   { groupName: "SG-TOMME-All", companyCode: "TOMME", roleKey: "employee" },
   { groupName: "SG-WARCO-All", companyCode: "WARCO", roleKey: "employee" },
+  { groupName: "SG-COHVERA-Management", companyCode: "WARCO", roleKey: "manager" },
 ];
 export function groupMappings(
   raw = process.env.ENTRA_GROUP_MAPPINGS ||

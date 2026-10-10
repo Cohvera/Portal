@@ -11,7 +11,7 @@ Microsoft Entra ID is de ingang: een medewerker meldt zich aan met het zakelijke
 | SG-PORTAL-Admins | Portal.Admin | Portaalbeheer én gewone toegang |
 | Beide groepen | Beide rollen | Dezelfde beheertoegang |
 
-De bestaande groepen SG-COHVERA-All en SG-COHVERA-Management zijn organisatorische groepen, geen portaalrollen. In de Enterprise Application hoort **Assignment required = Yes** te staan. Een geldig Microsoft-account alleen geeft dus nog geen toegang.
+SG-COHVERA-All is een organisatorische groep. SG-COHVERA-Management koppelt aan de bedrijfsrol Manager bij Warco; dit is geen portaalrol. In de Enterprise Application hoort **Assignment required = Yes** te staan. Een geldig Microsoft-account alleen geeft dus nog geen toegang.
 
 Er zijn twee afzonderlijke vragen:
 
@@ -49,6 +49,7 @@ De standaardkoppeling gebruikt exacte groepsnamen:
 | SG-QHOME-All | QHOME | employee (Medewerker) |
 | SG-TOMME-All | TOMME | employee (Medewerker) |
 | SG-WARCO-All | WARCO | employee (Medewerker) |
+| SG-COHVERA-Management | WARCO | manager (Manager, inclusief roadmap lezen/bewerken) |
 
 Laat `ENTRA_GROUP_MAPPINGS` weg of leeg om deze standaard te gebruiken. Een eerder ingestelde `[]` moet verwijderd worden: die schakelt alle koppelingen expliciet uit. Er zijn hiervoor geen groep-object-ID’s nodig in de portaalconfiguratie.
 
