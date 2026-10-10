@@ -27,6 +27,7 @@ model Company {
   isActive      Boolean             @default(true)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+  strategyActions StrategyAction[]
   tvBoard       TvBoard?
   projects      Project[]
   memberships   CompanyMembership[]
@@ -48,6 +49,7 @@ model User {
   memberships   CompanyMembership[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  strategyActions StrategyAction[]
   sessions      PortalSession[]
   @@unique([entraTenantId, entraObjectId])
 }
@@ -293,4 +295,22 @@ model TvBoard {
   fleet Json?
   nas Json?
   receivedAt DateTime?
+}
+
+model StrategyAction {
+  id String @id @default(cuid())
+  companyId String
+  roadmap String
+  actionCode String
+  status String @default("REVIEW")
+  ownerId String?
+  dueOn String @default("")
+  nextStep String @default("")
+  notes String @default("")
+  version Int @default(1)
+  updatedAt DateTime @updatedAt
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  @@unique([companyId, roadmap, actionCode])
+  @@index([companyId, status])
 }

@@ -24,3 +24,4 @@ export interface DomainEvent<T = unknown> {
 export * from "./inspections";
 export * from "./projects";
 export * from "./processes";
+export * from "./strategy";
