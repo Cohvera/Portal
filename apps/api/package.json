@@ -11,6 +11,7 @@
     "test": "node --test",
     "test:inspections": "tsx --test src/inspections/*.test.ts",
     "test:auth": "tsx --test src/auth/*.test.ts",
+    "test:strategy": "tsx --test src/strategy.test.ts",
     "test:qbox": "tsx --test src/integrations/qbox.test.ts"
   },
   "dependencies": {

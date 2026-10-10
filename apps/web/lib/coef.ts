@@ -32,6 +32,7 @@ export const coefHubs: HubDefinition[] = [
     tagline: "Van groepsambitie naar concrete prioriteiten.",
     purpose: "Brengt visie, strategische thema's, jaarobjectieven en ownership samen over Cohvera en de business units.",
     cards: [
+      { title: "Warco Roadmap", description: "Vijfjarenplan: 29 acties met eigenaar, deadline en voortgang.", status: "active", metric: "3 fasen", href: "/hubs/strategy/warco" },
       { title: "Strategische thema's", description: "Groepsprioriteiten en belangrijkste initiatieven.", status: "active", metric: "6 thema's" },
       { title: "Doelstellingen", description: "Jaar- en kwartaaldoelen met eigenaar en voortgang.", status: "planned", metric: "Q4" },
       { title: "Portfolio", description: "Transformatieprogramma's, investeringen en beslissingen.", status: "active", metric: "COEF" }

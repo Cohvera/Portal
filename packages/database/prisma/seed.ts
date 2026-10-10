@@ -3,6 +3,7 @@ import { PrismaClient, PluginState } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const permissions = [
+  "strategy.read", "strategy.manage",
   "projects.read", "projects.create", "projects.manage", "tasks.read", "tasks.manage",
   "portal.admin", "companies.read", "companies.switch", "users.read", "users.manage",
   "plugins.read", "plugins.manage", "notifications.read", "audit.read",
