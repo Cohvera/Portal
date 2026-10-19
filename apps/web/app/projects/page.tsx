@@ -122,7 +122,7 @@ export default function ProjectsPage() {
           + Nieuw project
         </button>
       </header>
-      {companyCode === "WARCO" && writable && <PlenionImport key={companyCode} companyCode={companyCode} onImported={refresh} />}
+      {companyCode === "QHOME" && writable && <PlenionImport key={companyCode} companyCode={companyCode} onImported={refresh} />}
       {plenion?.connected && (
         <div className={plenion.stale ? "alert" : "success-box"} role="status">
           Plenion via Q-box · {plenion.projectCount} projecten in de laatste export · Bronstand {plenion.sourceObservedAt ? new Date(plenion.sourceObservedAt).toLocaleString("nl-BE") : "onbekend"}.

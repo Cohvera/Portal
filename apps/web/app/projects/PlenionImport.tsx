@@ -9,7 +9,7 @@ export function PlenionImport({companyCode, onImported}: {companyCode:string; on
   const [busy, setBusy] = useState(false);
   return <details className="card">
     <summary>Projecten uit Plenion importeren</summary>
-    <p>Doelbedrijf: <strong>Warco</strong>. Cohvera selecteert statuscode 07.
+    <p>Doelbedrijf: <strong>Q-Home</strong>. Cohvera selecteert statuscode 07.
       Historische versies worden overgeslagen. Ontbrekende projecten worden niet verwijderd.</p>
     <label>JSON-bestand van de reader
       <input type="file" accept=".json,application/json" disabled={busy} onChange={async event => {
@@ -25,7 +25,7 @@ export function PlenionImport({companyCode, onImported}: {companyCode:string; on
         } catch (error) { setMessage(error instanceof Error ? error.message : "Bestand niet leesbaar."); }
       }} />
     </label>
-    {filename && <p>{filename} staat klaar. Controleer dat dit bestand afkomstig is van de Plenion-database van Warco.</p>}
+    {filename && <p>{filename} staat klaar. Controleer dat dit bestand afkomstig is van de Plenion-database van Q-Home.</p>}
     <button className="button-primary" disabled={busy || !payload} onClick={async () => {
       setBusy(true); setMessage("");
       try {
@@ -37,7 +37,7 @@ export function PlenionImport({companyCode, onImported}: {companyCode:string; on
         try { await onImported(); } catch { setMessage("Import gelukt. Vernieuw de pagina om het overzicht bij te werken."); }
       } catch(error) { setMessage(error instanceof Error ? error.message : "Import mislukt."); }
       finally { setBusy(false); }
-    }}>{busy ? "Importeren…" : "Importeren bij Warco"}</button>
+    }}>{busy ? "Importeren…" : "Importeren bij Q-Home"}</button>
     {message && <p role="status">{message}</p>}
   </details>;
 }

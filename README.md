@@ -126,11 +126,11 @@ De Q-box-worker en de rechtstreekse HFSQL-serverreader worden onderhouden in [Co
 
 ### Handmatige Plenion-readerimport
 
-Selecteer Warco → Projecten → Projecten uit Plenion importeren.
+Selecteer Q-Home → Projecten → Projecten uit Plenion importeren.
 Upload `portal-projects.json`, gemaakt met `sudo ./plenion.sh portal`
 in qbox-connector. Projectbeheerrechten voor het doelbedrijf zijn vereist.
 De reader exporteert alle statussen zonder bedrijfskeuze. Het portaalprofiel
-in `apps/api/src/integrations/reader-import.ts` selecteert voor WARCO code 07.
+in `apps/api/src/integrations/reader-import.ts` selecteert voor QHOME code 07.
 Historische versies (VersieAf=1) worden overgeslagen; UITWIP bepaalt afsluiting.
 Controleer zelf dat het bestand uit de database van het geselecteerde bedrijf komt:
 het generieke bestand bevat geen geverifieerde bedrijfsidentiteit.
