@@ -87,6 +87,9 @@ export type TvData = {
   projects: Project[];
   settings: Partial<TvSettings>;
   source: null | {
+    sourceKind?: string;
+    captureSha256?: string | null;
+    projectCount?: number;
     sourceObservedAt: string;
     snapshotId: string;
     receivedAt: string;

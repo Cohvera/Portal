@@ -31,11 +31,15 @@ export default function TvPage() {
   const [draft, setDraft] = useState<TvSettings>(defaultTvSettings),
     [saving, setSaving] = useState(false),
     [saveError, setSaveError] = useState("");
+  const sourceDialog = useRef<HTMLDialogElement>(null);
   const dialog = useRef<HTMLDialogElement>(null),
     board = useRef<HTMLElement>(null);
   const url = `/api/companies/${encodeURIComponent(companyCode)}/projects/tv`;
   const settings = { ...defaultTvSettings, ...data?.settings };
   useEffect(() => {
+    setData(null);
+    setLastFetch(0);
+    setPage(0);
     let active = true;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -173,6 +177,7 @@ export default function TvPage() {
           </label>
           <div className="tv-toolbar">
             <Link href="/tools">← Tools & Solutions</Link>
+            <button onClick={() => sourceDialog.current?.showModal()}>Gegevensverbinding</button>
             <span>
               {settings.selection === "execution"
                 ? "In uitvoering"
@@ -492,6 +497,26 @@ export default function TvPage() {
         {hidden > 0 &&
           ` · ${hidden} Plenion-projecten buiten de selectie of zonder actuele bronbevestiging`}
       </footer>
+      <dialog ref={sourceDialog} className="tv-settings">
+        <h2>Gegevensverbinding · {companies.find((c) => c.code === companyCode)?.name}</h2>
+        <p>De Q-box verwerkt een bevestigde bronkopie. Cohvera publiceert alleen een volledig gevalideerde projectimport.</p>
+        <ol className="tv-pipeline">
+          <li><strong>1. Bronbackup</strong><p>PureSync levert de bestanden aan. Een voltooiingsmanifest bevestigt de bestandsset en het oorspronkelijke backupmoment.</p></li>
+          <li><strong>2. Lokale verwerking</strong><p>De Q-box controleert de bestanden, maakt een werkkopie en leest die via de offline HFSQL-reader.</p></li>
+          <li><strong>3. Cohvera-import</strong><p>Projecten, bronstatussen en afwerkvinkjes worden samen gecontroleerd en opgeslagen voor dit bedrijf.</p></li>
+          <li><strong>4. Tv-selectie</strong><p>Het scherm toont actuele projecten volgens de gekozen selectie. Een verlopen bron wordt niet als actueel getoond.</p></li>
+        </ol>
+        <dl className="tv-source-details">
+          <dt>Actieve route</dt><dd>{!data?.source ? "Nog geen import ontvangen" : data.source.sourceKind === "reader_selection" ? "JSON-import uit Plenion-reader" : data.source.sourceKind === "qbox_capture" ? "Eigen Q-box-verwerking" : "Bestaande Data Hub-koppeling"}</dd>
+          <dt>Bronbackup</dt><dd>{data?.source ? new Date(data.source.sourceObservedAt).toLocaleString("nl-BE") : "Onbekend"}</dd>
+          <dt>Ontvangen in Cohvera</dt><dd>{data?.source ? new Date(data.source.receivedAt).toLocaleString("nl-BE") : "Nog niet"}</dd>
+          <dt>Projecten in import</dt><dd>{data?.source?.projectCount ?? "—"}</dd>
+          <dt>Actualiteit</dt><dd>{fresh(data?.source?.sourceObservedAt, now) ? "Binnen 24 uur" : "Geen actuele bronbevestiging"}</dd>
+          <dt>Batch</dt><dd>{data?.source?.snapshotId || "—"}</dd>
+        </dl>
+        <p>Dit overzicht toont de laatst geaccepteerde import. Lokale voortgang en fouten staan op de Q-box; een mislukte nieuwe poging vervangt de vorige import niet.</p>
+        <button type="button" onClick={() => sourceDialog.current?.close()}>Sluiten</button>
+      </dialog>
       <dialog
         ref={dialog}
         className="tv-settings"

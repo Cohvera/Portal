@@ -76,6 +76,12 @@ test("Import upserts stable source IDs, preserves local fields and rejects older
     await controller.ingest(reopened);
     assert.equal(projects.get("123").sourceIsClosed,false);
     assert.equal(projects.get("123").sourceStatusLabel,"09 - Afgewerkt");
+    const direct={...reopened,schema_version:4,source_kind:"qbox_capture",capture_sha256:"a".repeat(64),projects:reopened.projects.map(p=>({...p,evidence:"qbox_capture"}))};
+    await controller.ingest(direct);
+    assert.equal(previous.sourceKind,"qbox_capture");
+    assert.equal(previous.captureSha256,"a".repeat(64));
+    assert.equal((await controller.ingest(direct)).duplicate,true);
+    await assert.rejects(controller.ingest({...reopened,source_observed_at:new Date(Date.parse(reopened.source_observed_at)+10000).toISOString()}));
   } finally { prisma.$transaction=original; if(oldCompany===undefined) delete process.env.QBOX_IMPORT_COMPANY; else process.env.QBOX_IMPORT_COMPANY=oldCompany; }
 });
 
@@ -97,4 +103,15 @@ test("Full snapshot preserves the checkbox independently of status label", () =>
   assert.equal(validateSnapshot({...data,projects:[p]}).projects[0].closed,true);
   for(const patch of [{closed:null},{closed:1},{is_current:false},{source_id:""}]) assert.throws(()=>validateSnapshot({...data,projects:[{...p,...patch}]}));
   assert.throws(()=>validateSnapshot({...data,complete:false,projects:[p]}));
+});
+
+test("Direct Q-box capture has distinct provenance and requires a complete verified snapshot", () => {
+  const old=fixture();
+  const data={...old,schema_version:4,source_kind:"qbox_capture",scope:"ALL_CURRENT_PROJECTS",complete:true,capture_sha256:"a".repeat(64),projects:old.projects.map(p=>({...p,source_id:"r1",evidence:"qbox_capture"}))};
+  const valid=validateSnapshot(data);
+  assert.equal(valid.sourceKind,"qbox_capture");
+  assert.equal(valid.captureSha256,"a".repeat(64));
+  for(const patch of [{capture_sha256:null},{capture_sha256:"wrong"},{source_kind:"central_datahub"},{complete:false},{projects:[{...data.projects[0],evidence:"central_datahub"}]},{projects:[data.projects[0],{...data.projects[0],number:"456"}]}])
+    assert.throws(()=>validateSnapshot({...data,...patch}));
+  assert.notEqual(valid.digest,validateSnapshot({...data,capture_sha256:"b".repeat(64)}).digest);
 });

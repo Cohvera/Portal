@@ -1,3 +1,4 @@
+import { importReaderProjects } from "./integrations/reader-import";
 import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
 import { prisma } from "@cohvera/database";
 
@@ -54,6 +55,10 @@ export class ProjectsController {
   @Get("projects")
   async projects(@Param("companyCode") companyCode: string) {
     return prisma.project.findMany({where: {company: {code: companyCode}}, include: {tasks: {orderBy: {createdAt: "desc"}}}, orderBy: {name: "asc"}});
+  }
+  @Post("projects/import/plenion")
+  async importPlenion(@Param("companyCode") code: string, @Body() body: unknown) {
+    return importReaderProjects(code, body);
   }
   @Post("projects")
   async createProject(@Param("companyCode") code: string, @Body() body: unknown) {

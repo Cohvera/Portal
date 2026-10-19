@@ -119,3 +119,25 @@ status, reviewdatum, SharePoint-links en korte PDCA-opvolging. De procedures en 
 blijven in SharePoint. Portal.Admin kan het overzicht bijwerken; aangemelde
 bedrijfsleden kunnen het lezen. Pas de nieuwe database-migratie toe vóór deployment.
 Zie [gebruik en inrichting](docs/process-hub.md).
+
+### Eigen bestandsverwerking voor het tv-scherm
+
+De Q-box-worker en de rechtstreekse HFSQL-serverreader worden onderhouden in [Cohvera/qbox-connector](https://github.com/Cohvera/qbox-connector/tree/main/plenion). Alleen de ontvangende API, database-migraties en tv-weergave staan in deze Portal-repository. Hij verwerkt een bevestigde Plenion-bestandskopie via offline iODBC en publiceert contract v4 rechtstreeks naar Cohvera. In de tv-tool toont **Gegevensverbinding** welke route en bronstand actief zijn. Driver, bronmanifest en veldkoppeling moeten vóór productiegebruik worden ingesteld en gecontroleerd; de bestaande connector wordt niet automatisch omgeschakeld.
+
+### Handmatige Plenion-readerimport
+
+Selecteer Warco → Projecten → Projecten uit Plenion importeren.
+Upload `portal-projects.json`, gemaakt met `sudo ./plenion.sh portal`
+in qbox-connector. Projectbeheerrechten voor het doelbedrijf zijn vereist.
+De reader exporteert alle statussen zonder bedrijfskeuze. Het portaalprofiel
+in `apps/api/src/integrations/reader-import.ts` selecteert voor WARCO code 07.
+Historische versies (VersieAf=1) worden overgeslagen; UITWIP bepaalt afsluiting.
+Controleer zelf dat het bestand uit de database van het geselecteerde bedrijf komt:
+het generieke bestand bevat geen geverifieerde bedrijfsidentiteit.
+
+De import is atomair, weigert verouderde/afgekapte bestanden en dubbele actuele
+projectnummers, en behoudt lokale titels en verantwoordelijken. Ontbrekende projecten
+worden niet verwijderd. Het tv-scherm gebruikt alleen de laatste bronstand.
+Een handmatige import registreert contractversie 5; oudere automatische Q-box-imports
+worden daarna geweigerd om overschrijving door de oude route te voorkomen.
+Er is geen automatische upload of nieuwe database-migratie voor deze functie nodig.

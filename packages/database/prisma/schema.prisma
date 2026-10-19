@@ -150,6 +150,8 @@ model AuditLog {
 }
 
 model QboxImport {
+  sourceKind String @default("central_datahub")
+  captureSha256 String?
   contractVersion Int @default(2)
   companyCode      String @id
   snapshotId       String

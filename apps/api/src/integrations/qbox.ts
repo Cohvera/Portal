@@ -22,8 +22,12 @@ export function validateSnapshot(value: unknown, now = Date.now()) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return fail();
   const d = value as Record<string, unknown>;
   const version = d.schema_version;
-  if ((version !== 2 && version !== 3) || d.source_kind !== "central_datahub" || d.source_system !== "PLENION" || d.live !== true) return fail();
-  if (version === 3 && (d.scope !== "ALL_CURRENT_PROJECTS" || d.complete !== true)) return fail();
+  const direct = version === 4;
+  const sourceKind = direct ? "qbox_capture" : "central_datahub";
+  if ((version !== 2 && version !== 3 && version !== 4) || d.source_kind !== sourceKind || d.source_system !== "PLENION" || d.live !== true) return fail();
+  const captureSha256 = direct ? text(d.capture_sha256, 64) : null;
+  if (direct && !/^[a-f0-9]{64}$/.test(captureSha256!)) return fail();
+  if ((version === 3 || version === 4) && (d.scope !== "ALL_CURRENT_PROJECTS" || d.complete !== true)) return fail();
   const snapshotId = text(d.snapshot_id, 150), batchId = text(d.batch_id, 150);
   if (!snapshotId || !batchId) return fail();
   const observed = Date.parse(text(d.source_observed_at, 50)), validUntil = Date.parse(text(d.valid_until, 50));
@@ -33,22 +37,23 @@ export function validateSnapshot(value: unknown, now = Date.now()) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return fail();
     const p = value as Record<string, unknown>;
     const number = text(p.number, 60), customer = text(p.customer, 300), description = text(p.description, 2000), planned = text(p.planned, 10);
-    if (!/^\d+$/.test(number) || p.evidence !== "central_datahub" || p.is_current !== true || typeof p.active !== "boolean" || typeof p.closed !== "boolean") return fail();
+    if (!/^\d+$/.test(number) || p.evidence !== sourceKind || p.is_current !== true || typeof p.active !== "boolean" || typeof p.closed !== "boolean") return fail();
     const statusLabel = text(p.status_label, 100);
     if (!statusLabel.trim()) return fail();
-    const sourceId = version === 3 ? text(p.source_id, 100) : null;
-    if (version === 3 && !sourceId) return fail();
+    const sourceId = (version === 3 || version === 4) ? text(p.source_id, 100) : null;
+    if ((version === 3 || version === 4) && !sourceId) return fail();
     if (version === 2 && (statusLabel !== "07 - In Uitvoering" || p.active !== true || p.closed !== false)) return fail();
     if (planned && (!/^\d{4}-\d{2}-\d{2}$/.test(planned) || !Number.isFinite(Date.parse(planned)) || new Date(planned).toISOString().slice(0,10) !== planned)) return fail();
     return {number, customer, description, planned, statusLabel, sourceId, closed:p.closed, active:p.active};
   }).sort((a,b) => a.number.localeCompare(b.number));
   if (new Set(projects.map(p => p.number)).size !== projects.length) return fail();
+  if (version !== 2 && new Set(projects.map(p => p.sourceId)).size !== projects.length) return fail();
   const sourceObservedAt = new Date(observed);
   const digestInput = version === 2
     ? {snapshotId,batchId,observed,projects:projects.map(({number,customer,description,planned})=>({number,customer,description,planned}))}
-    : {version,snapshotId,batchId,observed,projects};
+    : {version,snapshotId,batchId,observed,projects,...(direct ? {captureSha256} : {})};
   const digest = createHash("sha256").update(JSON.stringify(digestInput)).digest("hex");
-  return {version,snapshotId,batchId,sourceObservedAt,digest,projects};
+  return {version,snapshotId,batchId,sourceObservedAt,digest,projects,sourceKind,captureSha256};
 }
 
 @Controller("integrations/qbox")
@@ -74,7 +79,7 @@ export class QboxImportController {
       const company = await tx.company.findUnique({where:{code:companyCode}});
       if (!company?.isActive) throw new ForbiddenException("Het ingestelde doelbedrijf is niet actief.");
       const previous = await tx.qboxImport.findUnique({where:{companyCode}});
-      if (previous && (previous.contractVersion ?? 2) > snapshot.version) throw new ConflictException("De oude TV-connector mag de volledige import niet overschrijven.");
+      if (previous && (previous.contractVersion ?? 2) > snapshot.version) throw new ConflictException("Een oudere connector mag de nieuwe import niet overschrijven.");
       if (previous && previous.sourceObservedAt > snapshot.sourceObservedAt) throw new ConflictException("Een nieuwere bronstand is al verwerkt.");
       if (previous?.digest === snapshot.digest) return {accepted:true, companyCode, duplicate:true, count:previous.projectCount, snapshotId:previous.snapshotId};
       if (previous && previous.sourceObservedAt.getTime() === snapshot.sourceObservedAt.getTime() && (previous.contractVersion ?? 2) >= snapshot.version) throw new ConflictException("Dezelfde bronstand heeft andere inhoud. Controleer de export.");
@@ -87,7 +92,7 @@ export class QboxImportController {
           update:source,
         });
       }
-      await tx.qboxImport.upsert({where:{companyCode},create:{companyCode,contractVersion:snapshot.version,snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length},update:{contractVersion:snapshot.version,snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length,receivedAt:new Date()}});
+      await tx.qboxImport.upsert({where:{companyCode},create:{companyCode,sourceKind:snapshot.sourceKind,captureSha256:snapshot.captureSha256,contractVersion:snapshot.version,snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length},update:{sourceKind:snapshot.sourceKind,captureSha256:snapshot.captureSha256,contractVersion:snapshot.version,snapshotId:snapshot.snapshotId,digest:snapshot.digest,sourceObservedAt:snapshot.sourceObservedAt,projectCount:snapshot.projects.length,receivedAt:new Date()}});
       return {accepted:true,companyCode,duplicate:false,count:snapshot.projects.length,snapshotId:snapshot.snapshotId};
     }, {timeout:60000});
   }

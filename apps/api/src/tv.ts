@@ -131,7 +131,7 @@ export class TvController {
       prisma.tvBoard.findUnique({ where: { companyCode: code } }),
       prisma.qboxImport.findUnique({
         where: { companyCode: code },
-        select: { snapshotId: true, sourceObservedAt: true, receivedAt: true },
+        select: { snapshotId: true, sourceObservedAt: true, receivedAt: true, sourceKind: true, captureSha256: true, projectCount: true },
       }),
       prisma.project.findMany({
         where: { company: { code } },
