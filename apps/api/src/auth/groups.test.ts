@@ -1,8 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { companyAccess, groupMappings } from "./groups";
+import { companyAccess, groupMappings, defaultGroupMappings } from "./groups";
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222";
+test("Cohvera management receives Warco manager access; employees and portal admins do not", () => {
+  const defaults = groupMappings(JSON.stringify(defaultGroupMappings));
+  const access = (groups: string[]) => companyAccess({groups, roles: ["Portal.Admin"]}, defaults)
+    .assignments.map(m => [m.companyCode, m.roleKey]);
+  assert.deepEqual(access(["SG-WARCO-All", "SG-COHVERA-Management"]), [["WARCO", "manager"]]);
+  assert.deepEqual(access(["SG-COHVERA-Management"]), [["WARCO", "manager"]]);
+  assert.deepEqual(access(["SG-WARCO-All"]), [["WARCO", "employee"]]);
+  assert.deepEqual(access(["SG-PORTAL-Admins"]), []);
+  assert.deepEqual(access(["sg-cohvera-management", "SG-COHVERA-Management-other"]), []);
+  assert.deepEqual(companyAccess({groups:["SG-COHVERA-Management"]}, groupMappings("[]")).assignments, []);
+});
 const mappings = groupMappings(
   JSON.stringify([
     { groupId: a, companyCode: "TOMME", roleKey: "viewer" },
