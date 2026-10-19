@@ -155,3 +155,18 @@ Inventory-verwijzing blijft via de detail-API opvraagbaar.
 Oude v1-bestanden worden na een v2-import voor dat bedrijf geweigerd.
 Ontbrekende of ongeldige projectmaprelaties blokkeren de hele import.
 De import ondersteunt bestanden tot 20 MB en maximaal 20.000 records.
+
+### Automatische readerupload
+
+De Q-box kan dezelfde JSON via POST /api/integrations/qbox/plenion/reader-projects
+sturen met header X-Qbox-Key. De API controleert de bedrijfskey en kiest
+het doelbedrijf uit QBOX_IMPORT_KEY_QHOME, QBOX_IMPORT_KEY_TOMME of QBOX_IMPORT_KEY_WARCO.
+Iedere bedrijfskey moet uniek zijn; laat ongebruikte keys leeg. Een bedrijf in het
+bestand wordt niet vertrouwd. QBOX_IMPORT_API_KEY met QBOX_IMPORT_COMPANY blijft
+werken als optionele legacy-koppeling. Dubbele keys voor verschillende bedrijven
+worden geweigerd. Alleen QHOME heeft momenteel een readerprofiel met status 07;
+voor andere bedrijven moeten de selectieafspraken eerst worden ingesteld.
+Dezelfde validatie, transactie, groepering en bescherming tegen oude exports gelden
+als voor handmatige imports. Installatie van de 15-minutentimer staat in
+qbox-connector plenion/server/README.md. Automatische upload vervangt de handmatige
+upload niet en vereist geen aanvullende database-migratie.

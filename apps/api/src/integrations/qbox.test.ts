@@ -1,8 +1,19 @@
-import { test } from "node:test";
+import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { validateSnapshot, verifyQboxKey, qboxCompanyCode, QboxImportController } from "./qbox";
 import { PortalGuard } from "../auth/guard";
 import type { ExecutionContext } from "@nestjs/common";
+const keyVars = ["QBOX_IMPORT_API_KEY","QBOX_IMPORT_COMPANY","QBOX_IMPORT_KEY_QHOME","QBOX_IMPORT_KEY_TOMME","QBOX_IMPORT_KEY_WARCO"];
+let savedEnv: (string | undefined)[];
+beforeEach(() => {
+  savedEnv = keyVars.map(name => process.env[name]);
+  keyVars.forEach(name => delete process.env[name]);
+  process.env.QBOX_IMPORT_API_KEY = "x".repeat(43);
+});
+afterEach(() => keyVars.forEach((name,index) => {
+  if (savedEnv[index] === undefined) delete process.env[name];
+  else process.env[name] = savedEnv[index];
+}));
 export function fixture(now = Date.now()) {
   return {schema_version:2,source_kind:"central_datahub",source_system:"PLENION",live:true,snapshot_id:"test-snapshot",batch_id:"test-batch",source_observed_at:new Date(now-60000).toISOString(),valid_until:new Date(now+3600000).toISOString(),projects:[{number:"123",customer:"Test klant",description:"Test project",planned:"",status_label:"07 - In Uitvoering",evidence:"central_datahub",active:true,is_current:true,closed:false}]};
 }
@@ -47,41 +58,42 @@ test("Import upserts stable source IDs, preserves local fields and rejects older
   prisma.$transaction = (async (fn:any)=>fn(tx)) as typeof original;
   try {
     const controller = new QboxImportController();
+    const ingest = (body:unknown) => controller.ingest(body, "x".repeat(43));
     const data = fixture();
-    assert.equal((await controller.ingest(data)).duplicate,false);
+    assert.equal((await ingest(data)).duplicate,false);
     assert.equal(projects.get("123").companyId,"company-qhome");
     assert.equal(previous.companyCode,"QHOME");
     projects.get("123").owner="Lokale verantwoordelijke";
     projects.get("123").name="Eigen titel";
-    assert.equal((await controller.ingest(data)).duplicate,true);
+    assert.equal((await ingest(data)).duplicate,true);
     assert.equal(projects.size,1);
     const newer={...data,source_observed_at:new Date(Date.parse(data.source_observed_at)+10000).toISOString(),projects:[{...data.projects[0],description:"Nieuwe bronomschrijving"}]};
-    await controller.ingest(newer);
+    await ingest(newer);
     assert.equal(projects.get("123").name,"Eigen titel");
     assert.equal(projects.get("123").owner,"Lokale verantwoordelijke");
     assert.equal(projects.get("123").sourceDescription,"Nieuwe bronomschrijving");
-    await assert.rejects(controller.ingest(data));
-    await controller.ingest({...newer,source_observed_at:new Date(Date.parse(newer.source_observed_at)+10000).toISOString(),projects:[]});
+    await assert.rejects(ingest(data));
+    await ingest({...newer,source_observed_at:new Date(Date.parse(newer.source_observed_at)+10000).toISOString(),projects:[]});
     assert.equal(projects.size,1); // Missing from a filtered export is not a deletion.
     const full={...newer,schema_version:3,scope:"ALL_CURRENT_PROJECTS",complete:true,source_observed_at:previous.sourceObservedAt.toISOString(),projects:[{...data.projects[0],source_id:"revision-2",closed:true,active:false}]};
-    await controller.ingest(full); // Upgrade of the same source snapshot is permitted once.
+    await ingest(full); // Upgrade of the same source snapshot is permitted once.
     assert.equal(previous.contractVersion,3);
     assert.equal(projects.get("123").sourceIsClosed,true);
     assert.equal(projects.get("123").sourceStatusLabel,"07 - In Uitvoering");
     assert.equal(projects.get("123").name,"Eigen titel");
     assert.equal(projects.size,1);
-    assert.equal((await controller.ingest(full)).duplicate,true);
-    await assert.rejects(controller.ingest({...full,schema_version:2}));
+    assert.equal((await ingest(full)).duplicate,true);
+    await assert.rejects(ingest({...full,schema_version:2}));
     const reopened={...full,source_observed_at:new Date(Date.parse(full.source_observed_at)+10000).toISOString(),projects:[{...full.projects[0],closed:false,status_label:"09 - Afgewerkt"}]};
-    await controller.ingest(reopened);
+    await ingest(reopened);
     assert.equal(projects.get("123").sourceIsClosed,false);
     assert.equal(projects.get("123").sourceStatusLabel,"09 - Afgewerkt");
     const direct={...reopened,schema_version:4,source_kind:"qbox_capture",capture_sha256:"a".repeat(64),projects:reopened.projects.map(p=>({...p,evidence:"qbox_capture"}))};
-    await controller.ingest(direct);
+    await ingest(direct);
     assert.equal(previous.sourceKind,"qbox_capture");
     assert.equal(previous.captureSha256,"a".repeat(64));
-    assert.equal((await controller.ingest(direct)).duplicate,true);
-    await assert.rejects(controller.ingest({...reopened,source_observed_at:new Date(Date.parse(reopened.source_observed_at)+10000).toISOString()}));
+    assert.equal((await ingest(direct)).duplicate,true);
+    await assert.rejects(ingest({...reopened,source_observed_at:new Date(Date.parse(reopened.source_observed_at)+10000).toISOString()}));
   } finally { prisma.$transaction=original; if(oldCompany===undefined) delete process.env.QBOX_IMPORT_COMPANY; else process.env.QBOX_IMPORT_COMPANY=oldCompany; }
 });
 
@@ -114,4 +126,64 @@ test("Direct Q-box capture has distinct provenance and requires a complete verif
   for(const patch of [{capture_sha256:null},{capture_sha256:"wrong"},{source_kind:"central_datahub"},{complete:false},{projects:[{...data.projects[0],evidence:"central_datahub"}]},{projects:[data.projects[0],{...data.projects[0],number:"456"}]}])
     assert.throws(()=>validateSnapshot({...data,...patch}));
   assert.notEqual(valid.digest,validateSnapshot({...data,capture_sha256:"b".repeat(64)}).digest);
+});
+test("reader endpoint imports into server-selected company, ignoring payload company", async () => {
+  const { prisma } = await import("@cohvera/database");
+  const before = process.env.QBOX_IMPORT_COMPANY;
+  const transaction = prisma.$transaction;
+  let selected = "";
+  try {
+    process.env.QBOX_IMPORT_COMPANY = "QHOME";
+    (prisma as any).$transaction = async (run:any) => run({
+      $executeRaw:async()=>1,
+      company:{findUnique:async(args:any)=>{selected=args.where.code;return {id:"qhome",isActive:true};}},
+      qboxImport:{findUnique:async()=>null,upsert:async()=>({})},
+    });
+    const result = await new QboxImportController().readerProjects({
+      schema_version:2, source:"plenion_reader_projects", company_code:"WARCO",
+      fetched_at:new Date().toISOString(),truncated:false,count:0,projects:[],
+    }, "x".repeat(43));
+    assert.equal(result.accepted,true);
+    assert.equal(result.companyCode,"QHOME");
+    assert.equal(selected,"QHOME");
+  } finally {
+    prisma.$transaction=transaction;
+    if (before === undefined) delete process.env.QBOX_IMPORT_COMPANY;
+    else process.env.QBOX_IMPORT_COMPANY=before;
+  }
+});
+test("company keys are isolated, legacy key stays scoped and duplicates fail closed", () => {
+  process.env.QBOX_IMPORT_COMPANY = "QHOME";
+  process.env.QBOX_IMPORT_KEY_QHOME = "q".repeat(43);
+  process.env.QBOX_IMPORT_KEY_TOMME = "t".repeat(43);
+  process.env.QBOX_IMPORT_KEY_WARCO = "w".repeat(43);
+  assert.equal(verifyQboxKey("q".repeat(43)), "QHOME");
+  assert.equal(verifyQboxKey("t".repeat(43)), "TOMME");
+  assert.equal(verifyQboxKey("w".repeat(43)), "WARCO");
+  assert.equal(verifyQboxKey("x".repeat(43)), "QHOME");
+  assert.throws(()=>verifyQboxKey("z".repeat(43)));
+  process.env.QBOX_IMPORT_KEY_WARCO = "q".repeat(43);
+  assert.throws(()=>verifyQboxKey("q".repeat(43)), /verschillende/);
+  delete process.env.QBOX_IMPORT_KEY_WARCO;
+  process.env.QBOX_IMPORT_KEY_TOMME = "short";
+  assert.throws(()=>verifyQboxKey("q".repeat(43)), /correct ingesteld/);
+});
+test("per-company key decides reader destination even when legacy target and payload differ", async () => {
+  const { prisma } = await import("@cohvera/database");
+  const original = prisma.$transaction;
+  process.env.QBOX_IMPORT_COMPANY = "TOMME";
+  process.env.QBOX_IMPORT_KEY_QHOME = "q".repeat(43);
+  try {
+    (prisma as any).$transaction = async (run:any) => run({
+      $executeRaw:async()=>1,
+      company:{findUnique:async(args:any)=>{assert.equal(args.where.code,"QHOME"); return {id:"qhome",isActive:true};}},
+      qboxImport:{findUnique:async()=>null,upsert:async(args:any)=>{assert.equal(args.where.companyCode,"QHOME");}},
+    });
+    const result = await new QboxImportController().readerProjects({
+      schema_version:2,source:"plenion_reader_projects",company_code:"WARCO",
+      fetched_at:new Date().toISOString(),truncated:false,count:0,projects:[],
+    }, "q".repeat(43));
+    assert.equal(result.companyCode,"QHOME");
+    await assert.rejects(new QboxImportController().readerProjects({}, "invalid"));
+  } finally {prisma.$transaction=original;}
 });

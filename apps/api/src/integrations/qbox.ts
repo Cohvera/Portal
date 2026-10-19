@@ -1,14 +1,32 @@
-import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Param, Post, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { importReaderProjects } from "./reader-import";
+import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Headers, Param, Post, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { tvTelemetry } from "../tv";
 import { Prisma } from "@cohvera/database";
 import { prisma } from "@cohvera/database";
 
-export function verifyQboxKey(value: unknown) {
-  const key = process.env.QBOX_IMPORT_API_KEY || "";
-  if (!/^[A-Za-z0-9_-]{43,128}$/.test(key)) throw new ServiceUnavailableException("Q-box import is niet ingesteld.");
-  if (typeof value !== "string" || value.length > 128 || !timingSafeEqual(createHash("sha256").update(value).digest(), createHash("sha256").update(key).digest()))
+export function verifyQboxKey(value: unknown): string {
+  const entries: {key:string; company:string}[] = [];
+  for (const company of ["QHOME", "TOMME", "WARCO"]) {
+    const key = process.env[`QBOX_IMPORT_KEY_${company}`];
+    if (key) entries.push({key,company});
+  }
+  const legacy = process.env.QBOX_IMPORT_API_KEY;
+  if (legacy) entries.push({key:legacy,company:qboxCompanyCode()});
+  if (!entries.length || entries.some(e => !/^[A-Za-z0-9_-]{43,128}$/.test(e.key)))
+    throw new ServiceUnavailableException("Q-box importsleutels zijn niet correct ingesteld.");
+  // A key must identify exactly one company; ambiguous configuration fails closed.
+  for (const entry of entries)
+    if (entries.some(other => other.key === entry.key && other.company !== entry.company))
+      throw new ServiceUnavailableException("Gebruik een verschillende Q-box sleutel per bedrijf.");
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{43,128}$/.test(value))
     throw new UnauthorizedException("Ongeldige Q-box sleutel.");
+  const digest = createHash("sha256").update(value).digest();
+  let company: string | undefined;
+  for (const entry of entries)
+    if (timingSafeEqual(digest, createHash("sha256").update(entry.key).digest())) company = entry.company;
+  if (!company) throw new UnauthorizedException("Ongeldige Q-box sleutel.");
+  return company;
 }
 export function qboxCompanyCode() {
   const code = process.env.QBOX_IMPORT_COMPANY || "TOMME";
@@ -58,9 +76,16 @@ export function validateSnapshot(value: unknown, now = Date.now()) {
 
 @Controller("integrations/qbox")
 export class QboxImportController {
+  @Post("plenion/reader-projects")
+  async readerProjects(@Body() body: unknown, @Headers("x-qbox-key") key: unknown) {
+    const companyCode = verifyQboxKey(key);
+    const result = await importReaderProjects(companyCode, body);
+    return {accepted:true, companyCode, ...result};
+  }
+
   @Post("tv")
-  async tv(@Body() body: unknown) {
-    const companyCode=qboxCompanyCode();
+  async tv(@Body() body: unknown, @Headers("x-qbox-key") key: unknown) {
+    const companyCode=verifyQboxKey(key);
     const company=await prisma.company.findUnique({where:{code:companyCode}});
     if(!company?.isActive) throw new ForbiddenException("Het ingestelde doelbedrijf is niet actief.");
     const parsed=tvTelemetry(body);
@@ -70,10 +95,10 @@ export class QboxImportController {
   }
 
   @Post("plenion/projects")
-  async ingest(@Body() body: unknown) {
+  async ingest(@Body() body: unknown, @Headers("x-qbox-key") key: unknown) {
     const snapshot = validateSnapshot(body);
     // Only server configuration selects the destination; never trust a payload company.
-    const companyCode = qboxCompanyCode();
+    const companyCode = verifyQboxKey(key);
     return prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(71620501)`;
       const company = await tx.company.findUnique({where:{code:companyCode}});
