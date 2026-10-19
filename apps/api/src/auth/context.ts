@@ -48,6 +48,7 @@ export function membership(code: string, permission?: string) {
   if (
     permission &&
     !businessAdmin &&
+    !(isPortalAdmin(ctx.roles) && ["projects.read", "projects.create", "projects.manage"].includes(permission)) &&
     !m.role.permissions.some((p) => p.permission.key === permission)
   )
     throw new ForbiddenException(

@@ -122,7 +122,8 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     );
   const can = (permission: string, code = companyCode) => {
     const access = identity.businessAccess.find((a) => a.companyCode === code);
-    return !!access && (access.businessAdmin || access.permissions.includes(permission));
+    return !!access && (access.businessAdmin || access.permissions.includes(permission) ||
+      (identity.roles.includes("Portal.Admin") && ["projects.read", "projects.create", "projects.manage"].includes(permission)));
   };
   const selectCompany = (code: string) => {
     if (!identity.companies.some(c => c.code === code)) return;
