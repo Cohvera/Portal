@@ -36,6 +36,7 @@ export class ProjectReferencesController {
     const rows = await prisma.project.findMany({
       where: {
         company: { code: companyCode },
+        sourceParentRecordId: null,
         ...(q?.trim()
           ? { name: { contains: q.trim(), mode: "insensitive" as const } }
           : {}),

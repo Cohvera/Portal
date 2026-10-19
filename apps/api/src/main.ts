@@ -424,7 +424,7 @@ export async function configuredApp() {
     await NestFactory.create<
       import("@nestjs/platform-express").NestExpressApplication
     >(AppModule);
-  app.useBodyParser("json", { limit: "6mb" });
+  app.useBodyParser("json", { limit: "22mb" });
   authMode();
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Cache-Control", "no-store");

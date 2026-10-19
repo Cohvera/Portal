@@ -179,6 +179,8 @@ model Project {
   sourceIsClosed Boolean?
   sourceIsActive Boolean?
   sourceRecordId String?
+  sourceParentRecordId String?
+  sourceDocuments Json?
   sourceDescription String?
   sourcePlannedAt DateTime? @db.Date
   sourceSeenAt DateTime?

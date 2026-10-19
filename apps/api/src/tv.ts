@@ -134,7 +134,7 @@ export class TvController {
         select: { snapshotId: true, sourceObservedAt: true, receivedAt: true, sourceKind: true, captureSha256: true, projectCount: true },
       }),
       prisma.project.findMany({
-        where: { company: { code } },
+        where: { company: { code }, sourceParentRecordId:null },
         orderBy: { name: "asc" },
         select: {
           id: true,

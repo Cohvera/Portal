@@ -17,6 +17,15 @@ export function PlenionProjectDetails({ project }: { project: Project }) {
   ];
 
   return (
+    <>
+    {Array.isArray(project.sourceDocuments) && project.sourceDocuments.length > 0 && <details className="projects-plenion-details">
+      <summary>Offertes / onderliggende records ({project.sourceDocuments.length})</summary>
+      <p>Gekoppeld via IDProjectMap naar bronrecord {project.sourceRecordId}. Documentsoorten worden getoond zoals ontvangen uit Plenion.</p>
+      <ul>{project.sourceDocuments.map(document => <li key={document.sourceId}>
+        <strong>{document.number} · {document.description || document.name}</strong>
+        <p>{document.statusLabel || "Status onbekend"} · Soort {document.documentType || "onbekend"} · Versie {document.versionNumber || "onbekend"}{document.revisionClosed ? " · Historische versie" : ""}{document.closed ? " · Uit WIP" : ""}</p>
+      </li>)}</ul>
+    </details>}
     <details className="projects-plenion-details">
       <summary>Gegevens uit Plenion<span className="projects-visually-hidden"> voor {project.name}</span></summary>
       <p>De laatst opgeslagen brongegevens in Cohvera. Dit is geen rechtstreekse live-opvraag bij Plenion.</p>
@@ -25,7 +34,8 @@ export function PlenionProjectDetails({ project }: { project: Project }) {
           <div key={key}><dt>{label} <code>{key}</code></dt><dd>{value}</dd></div>
         ))}
       </dl>
-      <p>De connector accepteert alleen huidige projectversies (is_current = true). Een verantwoordelijke wordt niet meegestuurd; die beheer je in Cohvera. ‘Niet ontvangen’ betekent niet ‘nee’.</p>
+      <p>Hoofdprojecten tonen de huidige versie. Gekoppelde records kunnen ook historische versies bevatten. Een verantwoordelijke wordt niet meegestuurd; die beheer je in Cohvera. ‘Niet ontvangen’ betekent niet ‘nee’.</p>
     </details>
+    </>
   );
 }

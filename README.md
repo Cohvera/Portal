@@ -131,13 +131,27 @@ Upload `portal-projects.json`, gemaakt met `sudo ./plenion.sh portal`
 in qbox-connector. Projectbeheerrechten voor het doelbedrijf zijn vereist.
 De reader exporteert alle statussen zonder bedrijfskeuze. Het portaalprofiel
 in `apps/api/src/integrations/reader-import.ts` selecteert voor QHOME code 07.
-Historische versies (VersieAf=1) worden overgeslagen; UITWIP bepaalt afsluiting.
+Historische hoofdversies (VersieAf=1) worden overgeslagen; UITWIP bepaalt afsluiting.
+Readerexport v2 koppelt onderliggende records via IDProjectMap aan IDProj,
+waarbij het hoofdrecord ProjectMap=1 moet hebben. Het statusfilter geldt voor
+het hoofdproject; alle gekoppelde records, inclusief historische versies en andere
+statussen, blijven zichtbaar onder dat project. Gelijke namen worden nooit samengevoegd.
 Controleer zelf dat het bestand uit de database van het geselecteerde bedrijf komt:
 het generieke bestand bevat geen geverifieerde bedrijfsidentiteit.
 
 De import is atomair, weigert verouderde/afgekapte bestanden en dubbele actuele
 projectnummers, en behoudt lokale titels en verantwoordelijken. Ontbrekende projecten
 worden niet verwijderd. Het tv-scherm gebruikt alleen de laatste bronstand.
-Een handmatige import registreert contractversie 5; oudere automatische Q-box-imports
+Een handmatige import registreert contractversie 5 (v1) of 6 (gegroepeerde v2); oudere automatische Q-box-imports
 worden daarna geweigerd om overschrijving door de oude route te voorkomen.
-Er is geen automatische upload of nieuwe database-migratie voor deze functie nodig.
+Er is geen automatische upload. Voor groepering is migratie
+`20261019160000_plenion_project_documents` vereist. De Compose-migratieservice
+past die toe vóór de API start. Update Portal inclusief migratie en de reader;
+maak daarna met `sudo ./plenion.sh portal` een nieuwe export en importeer opnieuw.
+Bestaande losse offerteprojecten worden op basis van hun bron-ID gemarkeerd als
+onderliggend: lijsten, tv-scherm en Inventory-projectselectie tonen ze niet meer.
+Hun interne IDs en bestaande verwijzingen blijven behouden; een bestaande
+Inventory-verwijzing blijft via de detail-API opvraagbaar.
+Oude v1-bestanden worden na een v2-import voor dat bedrijf geweigerd.
+Ontbrekende of ongeldige projectmaprelaties blokkeren de hele import.
+De import ondersteunt bestanden tot 20 MB en maximaal 20.000 records.
