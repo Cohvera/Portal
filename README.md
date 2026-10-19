@@ -164,8 +164,9 @@ het doelbedrijf uit QBOX_IMPORT_KEY_QHOME, QBOX_IMPORT_KEY_TOMME of QBOX_IMPORT_
 Iedere bedrijfskey moet uniek zijn; laat ongebruikte keys leeg. Een bedrijf in het
 bestand wordt niet vertrouwd. QBOX_IMPORT_API_KEY met QBOX_IMPORT_COMPANY blijft
 werken als optionele legacy-koppeling. Dubbele keys voor verschillende bedrijven
-worden geweigerd. Alleen QHOME heeft momenteel een readerprofiel met status 07;
-voor andere bedrijven moeten de selectieafspraken eerst worden ingesteld.
+worden geweigerd. QHOME en WARCO hebben een readerprofiel met status 07; voor TOMME moeten
+de selectieafspraken eerst worden ingesteld. De handmatige uploadknop blijft
+voorlopig alleen bij Q-Home zichtbaar; Warco kan automatisch via de eigen key importeren.
 Dezelfde validatie, transactie, groepering en bescherming tegen oude exports gelden
 als voor handmatige imports. Installatie van de 15-minutentimer staat in
 qbox-connector plenion/server/README.md. Automatische upload vervangt de handmatige

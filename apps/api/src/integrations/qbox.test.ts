@@ -187,3 +187,27 @@ test("per-company key decides reader destination even when legacy target and pay
     await assert.rejects(new QboxImportController().readerProjects({}, "invalid"));
   } finally {prisma.$transaction=original;}
 });
+
+test("Warco reader key writes exclusively to Warco despite a Q-Home payload", async () => {
+  const { prisma } = await import("@cohvera/database");
+  const original = prisma.$transaction;
+  process.env.QBOX_IMPORT_KEY_WARCO = "w".repeat(43);
+  process.env.QBOX_IMPORT_COMPANY = "QHOME";
+  try {
+    (prisma as any).$transaction = async (run:any) => run({
+      $executeRaw:async()=>1,
+      company:{findUnique:async(args:any)=>{assert.equal(args.where.code,"WARCO");return {id:"warco",isActive:true};}},
+      qboxImport:{findUnique:async()=>null,upsert:async(args:any)=>{assert.equal(args.where.companyCode,"WARCO");}},
+      project:{upsert:async(args:any)=>{assert.equal(args.create.companyId,"warco");assert.equal(args.where.companyId_externalSource_externalId.companyId,"warco");}},
+    });
+    const result = await new QboxImportController().readerProjects({
+      schema_version:2,source:"plenion_reader_projects",company_code:"QHOME",
+      fetched_at:new Date().toISOString(),truncated:false,count:1,
+      projects:[{source_id:"1",number:"123",name:"Test",description:"",status_id:"31701",
+        status_code:"07",status_label:"07 - In Uitvoering",revision_closed:"0",out_of_wip:"0",
+        parent_source_id:"0",is_project_map:"1",document_type:"600",version_number:"1"}],
+    }, "w".repeat(43));
+    assert.equal(result.companyCode,"WARCO");
+    assert.equal(result.count,1);
+  } finally {prisma.$transaction=original;}
+});

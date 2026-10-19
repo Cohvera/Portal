@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException } from "@nes
 import { prisma } from "@cohvera/database";
 import { createHash } from "node:crypto";
 
-const profiles: Record<string, readonly string[]> = { QHOME: ["07"] };
+const profiles: Record<string, readonly string[]> = { QHOME: ["07"], WARCO: ["07"] };
 const invalid = (message: string): never => { throw new BadRequestException(message); };
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid("Ongeldig JSON-object.");

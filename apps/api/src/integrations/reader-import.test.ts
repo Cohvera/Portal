@@ -10,7 +10,6 @@ test("Q-Home filters status in Portal, independent of internal ID", () => {
 });
 test("other companies and malformed batches fail", () => {
   assert.throws(()=>parseReaderImport("TOMME",batch()));
-  assert.throws(()=>parseReaderImport("WARCO",batch()));
   assert.throws(()=>parseReaderImport("QHOME",{...batch(),truncated:true}));
   assert.throws(()=>parseReaderImport("QHOME",{...batch(),count:3}));
   assert.throws(()=>parseReaderImport("QHOME",{...batch(),fetched_at:"2020-01-01"}));
@@ -77,4 +76,14 @@ test("reimport marks old child projects without deleting data or moving other co
     assert.equal(roots[0].update.sourceParentRecordId,null);
     assert.deepEqual(updates[0],{where:{companyId:"qhome-id",externalSource:"PLENION",sourceRecordId:{in:[child.source_id]}},data:{sourceParentRecordId:parent.source_id}});
   } finally {prisma.$transaction = original;}
+});
+
+test("Warco profile selects status 07 and groups documents independently of Q-Home", () => {
+  const result = parseReaderImport("WARCO", groupedBatch([
+    parent, child, {...parent,source_id:"55",number:"999",status_code:"02"}
+  ]));
+  assert.equal(result.projects.length,1);
+  assert.equal(result.projects[0].id,parent.source_id);
+  assert.equal(result.documentCount,1);
+  assert.equal(result.skipped,1);
 });
