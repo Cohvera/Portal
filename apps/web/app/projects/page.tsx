@@ -8,6 +8,7 @@ import {
 } from "../../lib/projects";
 import { filterProjects, projectScope, projectStatus, type ProjectFilters } from "../../lib/project-overview";
 import "./projects.css";
+import { RecentClosedProjects } from "./RecentClosedProjects";
 import { PlenionImport } from "./PlenionImport";
 import { PlenionProjectDetails } from "./PlenionProjectDetails";
 import { useCompany } from "../PortalShell";
@@ -129,6 +130,7 @@ export default function ProjectsPage() {
           {plenion.stale && " De bronstand is ouder dan 24 uur; bestaande projecten blijven beschikbaar."}
         </div>
       )}
+      <RecentClosedProjects key={companyCode} companyCode={companyCode} projects={projects} />
       {!creatable && !loading && (
         <p className="muted">
           Je kunt projecten bekijken. Aanmaken vereist de bedrijfsrol Medewerker

@@ -20,3 +20,12 @@ test("stale accepted selections remain visible, with no wall clock expiry",()=>{
   const source={sourceKind:"reader_selection",sourceObservedAt:new Date("2020-01-01")};
   assert.deepEqual(projectListWhere("WARCO",source).OR?.[2],{externalSource:"PLENION",sourceSeenAt:source.sourceObservedAt});
 });
+
+test("recent departures are company scoped roots within 30 days",async()=>{
+  const {recentClosedProjectWhere}=await import("./project-visibility");
+  const now=new Date("2026-10-20T12:00:00Z");
+  assert.deepEqual(recentClosedProjectWhere("WARCO",now),{
+    company:{code:"WARCO"},externalSource:"PLENION",sourceParentRecordId:null,
+    sourceOutOfSelectionAt:{gte:new Date("2026-09-20T12:00:00Z"),lte:now},
+  });
+});

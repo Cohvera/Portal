@@ -17,3 +17,8 @@ export async function currentProjectListWhere(companyCode: string) {
   const source = await prisma.qboxImport.findUnique({where:{companyCode},select:{sourceKind:true,sourceObservedAt:true}});
   return projectListWhere(companyCode,source);
 }
+
+export function recentClosedProjectWhere(companyCode:string, now = new Date()): Prisma.ProjectWhereInput {
+  return {company:{code:companyCode},externalSource:"PLENION",sourceParentRecordId:null,
+    sourceOutOfSelectionAt:{gte:new Date(now.getTime()-30*24*60*60*1000),lte:now}};
+}

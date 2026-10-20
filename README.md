@@ -183,3 +183,5 @@ wijzigt de geaccepteerde bronstand niet; er geldt hier geen verval na 24 uur.
 Een terugkerend project wordt via dezelfde bestaande identiteit weer zichtbaar.
 Historische detail-URLs blijven beschikbaar voor bestaande verwijzingen.
 Dit vereist alleen een API-update, geen nieuwe migratie of readerupdate.
+
+Bij Projecten toont **Recent afgesloten** de Plenion-hoofdprojecten die in de laatste 30 dagen uit een succesvolle readerselectie verdwenen zijn. `sourceOutOfSelectionAt` registreert de eerste sync die dat vaststelde; dit is geen factuurdatum of bevestiging van status 09. Terugkerende projecten verdwijnen uit dit overzicht. Bestaande historische records worden niet achteraf gedateerd. Pas migratie `20261020140000_project_selection_history` toe vóór de bijgewerkte API start. De Q-box hoeft hiervoor niet bijgewerkt te worden.

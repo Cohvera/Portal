@@ -93,7 +93,7 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
       throw new ConflictException("Dezelfde bronstand heeft andere inhoud.");
     for (const p of parsed.projects) {
       const source = {sourceRecordId:p.id, sourceStatusLabel:p.label, sourceIsClosed:p.closed,
-        sourceIsActive:!p.closed, sourceDescription:p.description, sourceSeenAt:parsed.observed,
+        sourceOutOfSelectionAt:null, sourceIsActive:!p.closed, sourceDescription:p.description, sourceSeenAt:parsed.observed,
         ...(parsed.grouped ? {sourceParentRecordId:null, sourceDocuments:p.documents} : {})};
       await tx.project.upsert({
         where:{companyId_externalSource_externalId:{companyId:company.id, externalSource:"PLENION", externalId:p.number}},
@@ -113,6 +113,13 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
         });
       }
     }
+    // Record only transitions from the previous accepted selection. Do not date
+    // already historical records as newly closed when this feature is deployed.
+    if (previous?.sourceKind === "reader_selection") await tx.project.updateMany({
+      where:{companyId:company.id,externalSource:"PLENION",sourceParentRecordId:null,
+        sourceSeenAt:previous.sourceObservedAt,sourceOutOfSelectionAt:null},
+      data:{sourceOutOfSelectionAt:parsed.observed},
+    });
     const data = {sourceKind:"reader_selection", contractVersion:parsed.grouped ? 6 : 5, captureSha256:null,
       snapshotId:`reader-${parsed.digest}`, digest:parsed.digest, sourceObservedAt:parsed.observed,
       projectCount:parsed.projects.length, receivedAt:new Date()};

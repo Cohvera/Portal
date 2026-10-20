@@ -87,3 +87,27 @@ test("Warco profile selects status 07 and groups documents independently of Q-Ho
   assert.equal(result.documentCount,1);
   assert.equal(result.skipped,1);
 });
+
+test("departures preserve first date and returning projects clear it", async () => {
+  const {prisma}=await import("@cohvera/database");
+  const {importReaderProjects}=await import("./reader-import");
+  const original=prisma.$transaction;
+  const initial=new Date(Date.now()-60000), departed=new Date(Date.now()-30000);
+  let previous:any={sourceKind:"reader_selection",sourceObservedAt:initial,contractVersion:6,digest:"previous"};
+  const updates:any[]=[];const roots:any[]=[];
+  try {
+    (prisma as any).$transaction=async(run:any)=>run({
+      $executeRaw:async()=>1,company:{findUnique:async()=>({id:"warco-id",isActive:true})},
+      qboxImport:{findUnique:async()=>previous,upsert:async(args:any)=>{previous=args.update;}},
+      project:{upsert:async(args:any)=>{roots.push(args);},updateMany:async(args:any)=>{updates.push(args);}},
+    });
+    const empty={...groupedBatch([]),fetched_at:departed.toISOString()};
+    await importReaderProjects("WARCO",empty);
+    assert.deepEqual(updates[0],{where:{companyId:"warco-id",externalSource:"PLENION",sourceParentRecordId:null,sourceSeenAt:initial,sourceOutOfSelectionAt:null},data:{sourceOutOfSelectionAt:departed}});
+    await importReaderProjects("WARCO",empty);
+    assert.equal(updates.length,1);
+    await importReaderProjects("WARCO",{...groupedBatch([parent]),fetched_at:new Date().toISOString()});
+    assert.equal(roots[0].update.sourceOutOfSelectionAt,null);
+    assert.equal(updates[1].where.sourceOutOfSelectionAt,null);
+  } finally {prisma.$transaction=original;}
+});
