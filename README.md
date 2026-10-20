@@ -171,3 +171,15 @@ Dezelfde validatie, transactie, groepering en bescherming tegen oude exports gel
 als voor handmatige imports. Installatie van de 15-minutentimer staat in
 qbox-connector plenion/server/README.md. Automatische upload vervangt de handmatige
 upload niet en vereist geen aanvullende database-migratie.
+
+### Zichtbaarheid na readerimport
+
+Projecten en de Inventory-projectkeuzelijst tonen bij een readerimport alleen
+Plenion-hoofdprojecten waarvan sourceSeenAt overeenkomt met sourceObservedAt van
+de laatste geaccepteerde import van dat bedrijf. Projecten die door een statuswijziging
+buiten de selectie vallen, verdwijnen dus uit de lijst zonder databaseverwijdering.
+Handmatige projecten en andere bronnen blijven zichtbaar. Een mislukte import
+wijzigt de geaccepteerde bronstand niet; er geldt hier geen verval na 24 uur.
+Een terugkerend project wordt via dezelfde bestaande identiteit weer zichtbaar.
+Historische detail-URLs blijven beschikbaar voor bestaande verwijzingen.
+Dit vereist alleen een API-update, geen nieuwe migratie of readerupdate.

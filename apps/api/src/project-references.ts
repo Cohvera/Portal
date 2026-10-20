@@ -1,3 +1,4 @@
+import { currentProjectListWhere } from "./project-visibility";
 import {
   BadRequestException,
   Controller,
@@ -35,8 +36,7 @@ export class ProjectReferencesController {
       throw new BadRequestException("Ongeldige zoekopdracht.");
     const rows = await prisma.project.findMany({
       where: {
-        company: { code: companyCode },
-        sourceParentRecordId: null,
+        ...await currentProjectListWhere(companyCode),
         ...(q?.trim()
           ? { name: { contains: q.trim(), mode: "insensitive" as const } }
           : {}),
