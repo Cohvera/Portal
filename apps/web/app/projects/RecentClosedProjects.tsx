@@ -17,12 +17,12 @@ export function RecentClosedProjects({companyCode,projects}:{companyCode:string;
     return ()=>controller.abort();
   },[companyCode,projects,revision]);
   return <details className="projects-recent-closed">
-    <summary>Recent afgesloten · laatste 30 dagen{!loading && !error && ` (${rows.length})`}</summary>
-    <p className="muted">Plenion-projecten die uit de actieve importselectie verdwenen zijn. De datum is het moment waarop de sync dit vaststelde, niet de factuurdatum. De nieuwe status is niet meegeleverd; gefactureerd of verloren is dus niet bevestigd.</p>
+    <summary>Updates · laatste 30 dagen{!loading && !error && ` (${rows.length})`}</summary>
+    <p className="muted">Hier zie je welke Plenion-projecten uit de actieve selectie zijn verdwenen en wanneer de synchronisatie dit vaststelde. De laatst ontvangen status staat erbij; de nieuwe status is niet meegeleverd.</p>
     <button type="button" className="button-secondary" disabled={loading} onClick={()=>setRevision(v=>v+1)}>Vernieuwen</button>
-    {loading ? <p role="status">Overzicht laden…</p> : error ? <p role="alert">{error}</p> : rows.length === 0 ? <p>Geen recent verdwenen projecten geregistreerd. Registratie begint vanaf de eerstvolgende succesvolle sync na deze update.</p> :
+    {loading ? <p role="status">Updates laden…</p> : error ? <p role="alert">{error}</p> : rows.length === 0 ? <p>Nog geen updates in de afgelopen 30 dagen. Nieuwe wijzigingen in de selectie verschijnen hier na een succesvolle synchronisatie.</p> :
       <div className="projects-table-scroll"><table className="projects-table">
-        <thead><tr><th>Project</th><th>Uit selectie sinds</th><th>Laatst ontvangen status</th><th>Verantwoordelijke</th></tr></thead>
+        <thead><tr><th>Project</th><th>Vastgesteld op</th><th>Laatst ontvangen status</th><th>Verantwoordelijke</th></tr></thead>
         <tbody>{rows.map(p=><tr key={p.id}><td><strong>{p.name}</strong><span className="projects-customer">Buiten actieve Plenion-selectie</span></td><td>{new Date(p.sourceOutOfSelectionAt).toLocaleString("nl-BE")}</td><td>{p.sourceStatusLabel || "Onbekend"}</td><td>{p.owner || "Niet toegewezen"}</td></tr>)}</tbody>
       </table></div>}
   </details>;
