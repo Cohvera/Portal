@@ -8,6 +8,7 @@ import {
 } from "../../lib/projects";
 import { filterProjects, projectScope, projectStatus, type ProjectFilters } from "../../lib/project-overview";
 import "./projects.css";
+import { projectsCsv } from "../../lib/project-csv";
 import { RecentClosedProjects } from "./RecentClosedProjects";
 import { PlenionImport } from "./PlenionImport";
 import { PlenionProjectDetails } from "./PlenionProjectDetails";
@@ -50,6 +51,18 @@ export default function ProjectsPage() {
     setRefreshError("");
     resetFilters();
   }, [companyCode]);
+  function exportCsv() {
+    const company = companies.find(c => c.code === companyCode)?.name || companyCode;
+    const blob = new Blob([projectsCsv(filteredProjects, company)], {type:"text/csv;charset=utf-8;"});
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `projecten-${companyCode.replace(/[^a-z0-9_-]/gi,"_")}-${new Date().toLocaleDateString("sv-SE")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+  }
   function open(project: Project | null = null) {
     setFormVersion((v) => v + 1);
     setEditing(project);
@@ -197,7 +210,10 @@ export default function ProjectsPage() {
             </div>
             <div className="projects-results-heading">
               <p role="status" aria-live="polite"><strong>{filteredProjects.length}</strong> van {projects.length} projecten{filters.status && ` · ${filters.status}`}</p>
-              {hasFilters && <button type="button" className="secondary-button" onClick={resetFilters}>Filters wissen</button>}
+              <div className="projects-export-actions">
+                <button type="button" className="secondary-button" disabled={loading || !!error || !filteredProjects.length} onClick={exportCsv} title="Download de projecten volgens de huidige filters">CSV exporteren ({filteredProjects.length})</button>
+                {hasFilters && <button type="button" className="secondary-button" onClick={resetFilters}>Filters wissen</button>}
+              </div>
             </div>
             {projects.some(p => p.externalSource === "PLENION") && <p className="muted projects-source-note">Plenion-projecten tonen hun originele bronstatus. Open/Afgesloten volgt het afsluitvinkje uit de bron, ook als het statuslabel daarvan afwijkt.</p>}
             {filteredProjects.length > 0 ? (

@@ -46,3 +46,5 @@
 .projects-recent-closed { margin: 1rem 0; padding: 1rem; border: 1px solid #dbe3ef; border-radius: 12px; }
 .projects-recent-closed > summary { cursor: pointer; font-weight: 650; }
 .projects-recent-closed .projects-table-scroll { margin-top: 1rem; }
+
+.projects-export-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
