@@ -25,3 +25,10 @@ test('Closure filter follows source checkbox, not a misleading status label',()=
   assert.equal(projectScope(projects[0]),'unknown');
   assert.equal(projectScope({...projects[1],status:'Afgerond'}),'closed');
 });
+
+test('in execution is separate from administratively open and invoiced',()=>{
+ const root={...projects[0],sourceStatusLabel:'09 - Gefactureerd',sourceIsClosed:false,sourceIsActive:false};
+ assert.equal(filterProjects([root],{...base,scope:'active'}).length,0);
+ assert.equal(filterProjects([root],{...base,scope:'open'}).length,1);
+ assert.equal(filterProjects([{...root,sourceIsActive:true,sourceIsClosed:true}],{...base,scope:'active'}).length,0);
+});

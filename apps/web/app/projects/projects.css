@@ -1,5 +1,5 @@
 .projects-overview{display:grid;gap:22px;margin-top:24px}
-.projects-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.projects-status-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .projects-status-tile{display:flex;flex-direction:column;gap:16px;text-align:left;padding:19px;border:1px solid #dce4ef;border-radius:14px;background:#fff;color:#12213a;cursor:pointer;font:inherit;transition:background .15s,border-color .15s}
 .projects-status-tile:hover{background:#f4f7fc;border-color:#9caecb}
 .projects-status-tile[aria-pressed="true"]{background:#eef2ff;border-color:#3447d4;box-shadow:inset 0 0 0 1px #3447d4}

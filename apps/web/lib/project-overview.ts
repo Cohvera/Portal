@@ -1,5 +1,9 @@
 export type OverviewProject = {
   name: string; customer: string; owner: string; status: string;
+  sourceDates?: Record<string,string|null>|null;
+  dueDate?:string|null;
+  sourceIsActive?: boolean | null;
+  sourceStatusCode?: string | null;
   sourceStatusLabel?: string | null; sourceIsClosed?: boolean | null;
   externalSource?: string | null; externalId?: string | null;
 };
@@ -14,10 +18,26 @@ export function projectScope(p: OverviewProject): 'open' | 'closed' | 'unknown' 
 export function filterProjects<T extends OverviewProject>(projects: T[], filters: ProjectFilters): T[] {
   const query = filters.query.trim().toLocaleLowerCase('nl-BE');
   return projects.filter(p =>
-    (!filters.scope || projectScope(p) === filters.scope) &&
+    (!filters.scope || (filters.scope === "active" ? projectInExecution(p) : projectScope(p) === filters.scope)) &&
     (!filters.status || projectStatus(p) === filters.status) &&
     (!filters.owner || (filters.owner === '__unassigned__' ? !p.owner.trim() : p.owner === filters.owner)) &&
     (!filters.source || (filters.source === 'PLENION' ? p.externalSource === 'PLENION' : !p.externalSource)) &&
     (!query || [p.name,p.customer,p.owner,p.externalId || ''].some(value => value.toLocaleLowerCase('nl-BE').includes(query)))
   ).sort((a,b) => a.name.localeCompare(b.name,'nl-BE',{numeric:true}));
+}
+
+export function projectInExecution(p:OverviewProject) {
+  return p.externalSource === "PLENION" ? p.sourceIsActive === true && p.sourceIsClosed !== true : p.status === "Actief";
+}
+export function projectExplanation(p:OverviewProject) {
+  if(p.externalSource !== "PLENION") return p.status === "Afgerond" ? "Afgerond in Portal" : "Status beheerd in Portal";
+  const status=projectStatus(p).toLocaleLowerCase("nl-BE");
+  const closed=p.sourceIsClosed;
+  if(closed===true) return "Administratief afgesloten (Uit WIP). Dit zegt niet of alle facturen betaald zijn.";
+  if(closed==null) return "Administratieve afsluiting niet ontvangen.";
+  if(p.sourceStatusCode==="09" || status.includes("gefactureerd")) return "Gefactureerd, nog niet administratief afgesloten. Betaling en garantieperiode niet bevestigd.";
+  if(status.includes("opgeleverd")) return "Opgeleverd, nog niet administratief afgesloten. Garantieperiode niet bevestigd.";
+  if(status.includes("verloren")) return "Verloren, maar Uit WIP staat nog uit.";
+  if(status.includes("offerte") || status.includes("calculatie")) return "Offerte/calculatie staat administratief open; uitvoering is niet bevestigd.";
+  return "Nog niet administratief afgesloten. De bronstatus bepaalt de fase van het project.";
 }

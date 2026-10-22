@@ -27,7 +27,7 @@ export function tvProjects(
         p.sourceIsClosed === false &&
         (selection !== "execution" ||
           (p.sourceIsActive === true &&
-            p.sourceStatusLabel === "07 - In Uitvoering"))
+            (p.sourceStatusCode ? p.sourceStatusCode === "07" : p.sourceStatusLabel === "07 - In Uitvoering")))
       );
     return selection === "execution"
       ? p.status === "Actief"

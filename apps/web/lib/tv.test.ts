@@ -58,3 +58,8 @@ test("Planning boundaries and inspection warnings use Brussels calendar dates", 
   assert.equal(inspection("2026-03-01", "2026-01-31").color, "orange");
   assert.equal(inspection("", "2026-01-31").label, "Keuringsdatum ontbreekt");
 });
+
+test('v3 execution selection uses status code independently of label spelling',()=>{
+ assert.equal(tvProjects([{...project,sourceStatusCode:'07',sourceStatusLabel:'07 - IN UITVOERING'}],'execution',stamp,now).length,1);
+ assert.equal(tvProjects([{...project,sourceStatusCode:'09',sourceIsActive:false}],'execution',stamp,now).length,0);
+});

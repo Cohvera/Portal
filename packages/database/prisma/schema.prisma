@@ -180,6 +180,9 @@ model Project {
   sourceIsActive Boolean?
   sourceRecordId String?
   sourceParentRecordId String?
+  sourceStatusCode String?
+  sourceDates Json?
+  sourceEvents ProjectSourceEvent[]
   sourceDocuments Json?
   sourceDescription String?
   sourcePlannedAt DateTime? @db.Date
@@ -318,4 +321,14 @@ model StrategyAction {
   owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   @@unique([companyId, roadmap, actionCode])
   @@index([companyId, status])
+}
+
+model ProjectSourceEvent {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields:[projectId], references:[id], onDelete:Cascade)
+  observedAt DateTime
+  message String
+  @@index([projectId, observedAt])
+  @@index([observedAt])
 }

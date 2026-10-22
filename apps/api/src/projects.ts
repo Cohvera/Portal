@@ -57,6 +57,14 @@ export class ProjectsController {
   async projects(@Param("companyCode") companyCode: string) {
     return prisma.project.findMany({where: await currentProjectListWhere(companyCode), include: {tasks: {orderBy: {createdAt: "desc"}}}, orderBy: {name: "asc"}});
   }
+  @Get("projects/updates")
+  async updates(@Param("companyCode") companyCode:string) {
+    return prisma.projectSourceEvent.findMany({
+      where:{project:{company:{code:companyCode}},observedAt:{gte:new Date(Date.now()-30*86400000)}},
+      include:{project:{select:{name:true,externalId:true}}},
+      orderBy:[{observedAt:"desc"},{id:"asc"}],take:200,
+    });
+  }
   @Get("projects/recent-closed")
   async recentClosed(@Param("companyCode") companyCode:string) {
     return prisma.project.findMany({where:recentClosedProjectWhere(companyCode),

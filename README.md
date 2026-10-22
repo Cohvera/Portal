@@ -184,4 +184,31 @@ Een terugkerend project wordt via dezelfde bestaande identiteit weer zichtbaar.
 Historische detail-URLs blijven beschikbaar voor bestaande verwijzingen.
 Dit vereist alleen een API-update, geen nieuwe migratie of readerupdate.
 
-Bij Projecten toont **Recent afgesloten** de Plenion-hoofdprojecten die in de laatste 30 dagen uit een succesvolle readerselectie verdwenen zijn. `sourceOutOfSelectionAt` registreert de eerste sync die dat vaststelde; dit is geen factuurdatum of bevestiging van status 09. Terugkerende projecten verdwijnen uit dit overzicht. Bestaande historische records worden niet achteraf gedateerd. Pas migratie `20261020140000_project_selection_history` toe vóór de bijgewerkte API start. De Q-box hoeft hiervoor niet bijgewerkt te worden.
+Historisch (v2): bij Projecten toonde **Recent afgesloten** de Plenion-hoofdprojecten die in de laatste 30 dagen uit een succesvolle readerselectie verdwenen zijn. `sourceOutOfSelectionAt` registreert de eerste sync die dat vaststelde; dit is geen factuurdatum of bevestiging van status 09. Terugkerende projecten verdwijnen uit dit overzicht. Bestaande historische records worden niet achteraf gedateerd. Pas migratie `20261020140000_project_selection_history` toe vóór de bijgewerkte API start. De Q-box hoeft hiervoor niet bijgewerkt te worden.
+
+
+### Plenion-projectdossier en Updates (reader v3)
+
+Reader v3 importeert alle actuele hoofdprojectmappen (ProjectMap=1, geen parent, VersieAf=0)
+met hun direct gekoppelde records, inclusief historische documentversies en alle statussen.
+De projectlijst start met **In uitvoering** (profielcode 07, Uit WIP uit). Andere filters tonen
+niet-afgesloten, administratief afgesloten en alle ontvangen hoofdprojecten. De statusfilter
+kan met de afsluitfilter worden gecombineerd. Het tv-profiel **In uitvoering** blijft code 07 gebruiken.
+**Alle open projecten** op tv omvat nadrukkelijk ook niet-afgesloten projecten in andere fasen.
+
+UITWIP wordt afzonderlijk getoond: geen afleiding van betaling, garantie-einde of volledige
+facturatie. Namen en statussen van documenten blijven bij hun eigen record. Documentsoortcodes
+worden niet zonder bevestigde mapping vertaald naar 'factuur'. Brondata staan onder de details;
+Deadline staat ook in de tabel en de CSV. Lege datums blijven leeg; ongeldige datums blokkeren
+de hele import. De maximale export blijft 20.000 records / 20 MB; afgekapt wordt niet geïmporteerd.
+
+**Updates** bewaart nieuwe hoofdprojecten/documenten, status-, Uit WIP- en datumwijzigingen
+in dezelfde transactie als de import. Het overzicht toont de 200 nieuwste updates van 30 dagen,
+per bedrijf. De eerste v3-import is een baseline zonder historische meldingen. Daarna worden
+wijzigingen bij de eerstvolgende succesvolle sync geregistreerd, zonder verzonnen bronmoment.
+Dubbele/oudere exports maken geen nieuwe events. Na v3 wordt terugschakelen naar v1/v2 geweigerd.
+
+Deploy eerst Portal (API én web) inclusief migratie `20261022120000_project_lifecycle`.
+Daarna de Q-box-reader uit qbox-connector bijwerken, opnieuw installeren en `sudo ./plenion.sh sync`.
+De bestaande timer blijft actief. Een live HFSQL-query met deze datumvelden moet na installatie
+worden gecontroleerd; lokale tests gebruiken fixtures, geen verbinding met de bedrijfsdatabase.

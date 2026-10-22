@@ -111,3 +111,39 @@ test("departures preserve first date and returning projects clear it", async () 
     assert.equal(updates[1].where.sourceOutOfSelectionAt,null);
   } finally {prisma.$transaction=original;}
 });
+
+const lifecycleBatch = (rows:unknown[])=>({...groupedBatch(rows),schema_version:3});
+test("v3 retains invoiced/closed roots and validates dates without guessing a closure date",()=>{
+  const parsed=parseReaderImport("WARCO",lifecycleBatch([{...parent,status_code:"09",status_label:"09 - Gefactureerd",out_of_wip:"0",deadline:"20261031",invoice_date:"00000000"},child]));
+  assert.equal(parsed.projects.length,1);
+  assert.equal(parsed.projects[0].closed,false);
+  assert.equal(parsed.projects[0].dates.deadline,"2026-10-31");
+  assert.equal(parsed.projects[0].dates.invoice_date,null);
+  assert.equal(parsed.documentCount,1);
+  assert.equal(parseReaderImport("WARCO",lifecycleBatch([{...parent,out_of_wip:"1"}])).projects.length,1);
+  assert.throws(()=>parseReaderImport("WARCO",lifecycleBatch([{...parent,deadline:"20260230"}])));
+});
+test("v3 establishes baseline, then records changes, rejects downgrade and duplicate events",async()=>{
+ const {prisma}=await import("@cohvera/database");
+ const {importReaderProjects}=await import("./reader-import");
+ const original=prisma.$transaction;
+ let previous:any=null,stored:any=null;const events:any[]=[];
+ try{
+  (prisma as any).$transaction=async(run:any)=>run({
+   $executeRaw:async()=>1,company:{findUnique:async()=>({id:"warco-id",isActive:true})},
+   qboxImport:{findUnique:async()=>previous,upsert:async(args:any)=>{previous=args.update;}},
+   project:{findMany:async(args:any)=>{assert.equal(args.where.companyId,"warco-id");return stored?[stored]:[];},
+    upsert:async(args:any)=>{stored={...(stored || args.create),...args.update,id:"root-id",externalId:parent.number};return stored;},updateMany:async()=>({count:0})},
+   projectSourceEvent:{createMany:async(args:any)=>events.push(...args.data),create:async(args:any)=>events.push(args.data)},
+  });
+  const now=Date.now();
+  await importReaderProjects("WARCO",{...lifecycleBatch([parent]),fetched_at:new Date(now-30000).toISOString()});
+  assert.equal(events.length,0);
+  const next={...lifecycleBatch([{...parent,status_code:"09",status_label:"09 - Gefactureerd"},child]),fetched_at:new Date(now).toISOString()};
+  await importReaderProjects("WARCO",next);
+  assert.equal(stored.sourceIsActive,false);assert.equal(stored.sourceIsClosed,false);
+  assert.equal(events.length,2);assert.ok(events.some(e=>e.message.includes("Nieuw gekoppeld record")));
+  await importReaderProjects("WARCO",next);assert.equal(events.length,2);
+  await assert.rejects(importReaderProjects("WARCO",groupedBatch([parent])),/nieuwste/);
+ }finally{prisma.$transaction=original;}
+});

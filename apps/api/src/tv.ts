@@ -146,6 +146,7 @@ export class TvController {
           externalId: true,
           sourceDescription: true,
           sourceStatusLabel: true,
+          sourceStatusCode: true,
           sourceIsClosed: true,
           sourceIsActive: true,
           sourcePlannedAt: true,

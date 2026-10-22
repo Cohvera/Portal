@@ -6,9 +6,10 @@ import {
   request,
   type Project,
 } from "../../lib/projects";
-import { filterProjects, projectScope, projectStatus, type ProjectFilters } from "../../lib/project-overview";
+import { filterProjects, projectScope, projectStatus, projectInExecution, projectExplanation, type ProjectFilters } from "../../lib/project-overview";
 import "./projects.css";
 import { projectsCsv } from "../../lib/project-csv";
+import { ProjectStatusHelp } from "./ProjectStatusHelp";
 import { RecentClosedProjects } from "./RecentClosedProjects";
 import { PlenionImport } from "./PlenionImport";
 import { PlenionProjectDetails } from "./PlenionProjectDetails";
@@ -30,11 +31,11 @@ export default function ProjectsPage() {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [refreshError, setRefreshError] = useState("");
-  const [filters, setFilters] = useState<ProjectFilters>({query:"",status:"",owner:"",source:"",scope:"open"});
-  const resetFilters = () => setFilters({query:"",status:"",owner:"",source:"",scope:"open"});
+  const [filters, setFilters] = useState<ProjectFilters>({query:"",status:"",owner:"",source:"",scope:"active"});
+  const resetFilters = () => setFilters({query:"",status:"",owner:"",source:"",scope:"active"});
   const filteredProjects = filterProjects(projects, filters);
   const owners = [...new Set(projects.map(p => p.owner).filter(owner => owner.trim()))].sort((a,b) => a.localeCompare(b,"nl-BE"));
-  const hasFilters = !!(filters.query || filters.status || filters.owner || filters.source || filters.scope !== "open");
+  const hasFilters = !!(filters.query || filters.status || filters.owner || filters.source || filters.scope !== "active");
   const statusOptions = [...new Set(projects.map(projectStatus))].sort((a,b) => a.localeCompare(b,"nl-BE",{numeric:true}));
   const [plenion, setPlenion] = useState<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number} | null>(null);
   useEffect(() => {
@@ -143,6 +144,7 @@ export default function ProjectsPage() {
           {plenion.stale && " De bronstand is ouder dan 24 uur; bestaande projecten blijven beschikbaar."}
         </div>
       )}
+      <ProjectStatusHelp />
       <RecentClosedProjects key={companyCode} companyCode={companyCode} projects={projects} />
       {!creatable && !loading && (
         <p className="muted">
@@ -170,12 +172,12 @@ export default function ProjectsPage() {
       ) : (
         <section className="projects-overview" aria-label="Projectoverzicht">
           <div className="projects-status-grid" aria-label="Filter op afsluiting">
-            {[{value:"open",label:"Open",color:"#2563eb"},{value:"closed",label:"Afgesloten",color:"#16834b"},{value:"unknown",label:"Nog niet bevestigd",color:"#d97706"},{value:"",label:"Alle projecten",color:"#0b2038"}].map(({value,label,color}) => (
+            {[{value:"active",label:"In uitvoering",color:"#2563eb"},{value:"open",label:"Niet afgesloten",color:"#2563eb"},{value:"closed",label:"Administratief afgesloten",color:"#16834b"},{value:"unknown",label:"Nog niet bevestigd",color:"#d97706"},{value:"",label:"Alle projecten",color:"#0b2038"}].map(({value,label,color}) => (
               <button key={label} type="button" className="projects-status-tile"
                 aria-pressed={filters.scope === value}
                 onClick={() => setFilters(current => ({...current,scope:value}))}>
                 <span><i style={{backgroundColor:color}} aria-hidden="true" />{label}</span>
-                <strong>{value ? projects.filter(p => projectScope(p) === value).length : projects.length}</strong>
+                <strong>{value ? projects.filter(p => value === "active" ? projectInExecution(p) : projectScope(p) === value).length : projects.length}</strong>
               </button>
             ))}
           </div>
@@ -215,17 +217,18 @@ export default function ProjectsPage() {
                 {hasFilters && <button type="button" className="secondary-button" onClick={resetFilters}>Filters wissen</button>}
               </div>
             </div>
-            {projects.some(p => p.externalSource === "PLENION") && <p className="muted projects-source-note">Plenion-projecten tonen hun originele bronstatus. Open/Afgesloten volgt het afsluitvinkje uit de bron, ook als het statuslabel daarvan afwijkt.</p>}
+            {projects.some(p => p.externalSource === "PLENION") && <p className="muted projects-source-note">Status en administratieve afsluiting zijn onafhankelijk. Uit WIP geldt per record: een afgesloten offerte of nieuwe factuur sluit het hoofdproject niet automatisch af. Een oude datum betekent niet dat een project nog in uitvoering is.</p>}
             {filteredProjects.length > 0 ? (
               <div className="projects-table-scroll">
                 <table className="projects-table">
                   <caption className="projects-visually-hidden">Projecten van het geselecteerde bedrijf, gefilterd op status, verantwoordelijke, bron en zoekterm</caption>
-                  <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Afgesloten</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
+                  <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Administratief afgesloten</th><th scope="col">Deadline</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
                   <tbody>{filteredProjects.map(p => (
                     <tr key={p.id}>
                       <td><strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}{p.externalSource === "PLENION" && <PlenionProjectDetails project={p} />}</td>
-                      <td><span className="project-status"><span style={{backgroundColor:p.externalSource === "PLENION" ? (projectScope(p) === "closed" ? "#16834b" : "#2563eb") : p.statusColor || projectStatuses[p.status]}} />{projectStatus(p)}</span></td>
+                      <td><span className="project-status"><span style={{backgroundColor:p.externalSource === "PLENION" ? (projectScope(p) === "closed" ? "#16834b" : "#2563eb") : p.statusColor || projectStatuses[p.status]}} />{projectStatus(p)}</span>{p.externalSource === "PLENION" && <span className="projects-customer">{projectExplanation(p)}</span>}</td>
                       <td>{projectScope(p) === "unknown" ? <span className="muted">Nog niet bevestigd</span> : <label className="projects-closed-flag"><input type="checkbox" checked={projectScope(p) === "closed"} disabled aria-label={`${p.name}: afgesloten volgens ${p.externalSource === "PLENION" ? "Plenion" : "portaalstatus"}`} />{projectScope(p) === "closed" ? "Ja" : "Nee"}</label>}</td>
+                      <td>{(p.externalSource === "PLENION" ? p.sourceDates?.deadline : p.dueDate)?.slice(0,10) || "Niet ingevuld"}</td>
                       <td><span className={!p.owner.trim() ? "muted" : ""}>{p.owner || "Nog toe te wijzen"}</span></td>
                       <td><span className="projects-source-badge">{p.externalSource === "PLENION" ? "Plenion" : "Portaal"}</span>{p.externalId && <span className="projects-customer">{p.externalId}</span>}</td>
                       <td><button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button></td>
@@ -292,7 +295,7 @@ export default function ProjectsPage() {
                 placeholder="Bijvoorbeeld: Renovatie kantoor"
               />
             </label>
-            {editing?.externalSource === "PLENION" && <p className="muted">Plenion-status: {projectStatus(editing)} · Afgesloten: {projectScope(editing) === "unknown" ? "onbekend" : projectScope(editing) === "closed" ? "ja" : "nee"}. Deze brongegevens worden in Plenion beheerd; de portaalstatus hieronder staat daar los van.</p>}
+            {editing?.externalSource === "PLENION" && <p className="muted">Plenion-status: {projectStatus(editing)} · Administratief afgesloten: {projectScope(editing) === "unknown" ? "onbekend" : projectScope(editing) === "closed" ? "ja" : "nee"}. Deze brongegevens worden in Plenion beheerd; de portaalstatus hieronder staat daar los van.</p>}
             <div className="form-grid">
               <label>
                 Portaalstatus
