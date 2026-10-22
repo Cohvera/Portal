@@ -189,7 +189,7 @@ Historisch (v2): bij Projecten toonde **Recent afgesloten** de Plenion-hoofdproj
 
 ### Plenion-projectdossier en Updates (reader v3)
 
-Reader v3 importeert alle actuele records zonder parent (VersieAf=0), inclusief zelfstandige projecten zonder ProjectMap-vinkje
+Reader v3 importeert alle actuele hoofdprojectmappen (ProjectMap=1, geen parent, VersieAf=0)
 met hun direct gekoppelde records, inclusief historische documentversies en alle statussen.
 De projectlijst start met **In uitvoering** (profielcode 07, Uit WIP uit). Andere filters tonen
 niet-afgesloten, administratief afgesloten en alle ontvangen hoofdprojecten. De statusfilter
