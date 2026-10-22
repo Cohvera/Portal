@@ -54,9 +54,13 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
         const raw = string(row[key] ?? "", 50);
         if (!raw || raw === "00000000" || raw === "0000-00-00") { dates[key]=null; continue; }
         const normalized = /^\d{8}$/.test(raw) ? `${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}` : raw;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized) || !Number.isFinite(Date.parse(normalized)) || new Date(normalized).toISOString().slice(0,10)!==normalized)
+        const parts = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2})(\.\d{1,9})?)?$/.exec(normalized);
+        const day = parts?.[1];
+        if (!day || !Number.isFinite(Date.parse(day)) || new Date(day).toISOString().slice(0,10)!==day ||
+            (parts[2] !== undefined && (+parts[2]>23 || +parts[3]>59 || +parts[4]>59)))
           return invalid(`Ongeldige brondatum: ${key}`);
-        dates[key]=normalized;
+        // HFSQL timestamps have no timezone. Keep source wall time without inventing UTC.
+        dates[key]=parts[2] === undefined ? day : `${day}T${parts[2]}:${parts[3]}:${parts[4]}${parts[5] || ""}`;
       }
       dates.invoice_number=string(row.invoice_number ?? "", 100) || null;
     }
@@ -113,7 +117,7 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
       const source = {sourceRecordId:p.id, sourceStatusLabel:p.label, sourceIsClosed:p.closed,
         sourceOutOfSelectionAt:null, sourceIsActive:!p.closed && profiles[companyCode].includes(p.code), sourceDescription:p.description, sourceSeenAt:parsed.observed,
         ...(parsed.grouped ? {sourceParentRecordId:null, sourceDocuments:p.documents} : {}),
-        ...(parsed.lifecycle ? {sourceStatusCode:p.code,sourceDates:p.dates,sourcePlannedAt:p.dates.planned_date ? new Date(p.dates.planned_date) : null} : {})};
+        ...(parsed.lifecycle ? {sourceStatusCode:p.code,sourceDates:p.dates,sourcePlannedAt:p.dates.planned_date ? new Date(p.dates.planned_date.slice(0,10)) : null} : {})};
       const saved = await tx.project.upsert({
         where:{companyId_externalSource_externalId:{companyId:company.id, externalSource:"PLENION", externalId:p.number}},
         create:{...source, companyId:company.id, externalSource:"PLENION", externalId:p.number,

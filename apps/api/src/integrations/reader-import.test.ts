@@ -147,3 +147,12 @@ test("v3 establishes baseline, then records changes, rejects downgrade and dupli
   await assert.rejects(importReaderProjects("WARCO",groupedBatch([parent])),/nieuwste/);
  }finally{prisma.$transaction=original;}
 });
+
+test("HFSQL date-times retain source wall time alongside plain dates",()=>{
+ const result=parseReaderImport("WARCO",lifecycleBatch([{...parent,created_date:"2018-10-08 05:57:01.530",document_date:"2018-10-08",deadline:"20261031"}]));
+ assert.equal(result.projects[0].dates.created_date,"2018-10-08T05:57:01.530");
+ assert.equal(result.projects[0].dates.document_date,"2018-10-08");
+ assert.equal(result.projects[0].dates.deadline,"2026-10-31");
+ for(const raw of ["2018-02-30 05:57:01.530","2018-10-08 25:00:00","2018-10-08 05:60:00","2018-10-08 05:57:60","not a date"])
+  assert.throws(()=>parseReaderImport("WARCO",lifecycleBatch([{...parent,created_date:raw}])),/Ongeldige brondatum/);
+});
