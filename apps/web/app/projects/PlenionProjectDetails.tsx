@@ -22,7 +22,8 @@ export function PlenionProjectDetails({ project }: { project: Project }) {
       <summary>Offertes / onderliggende records ({project.sourceDocuments.length})</summary>
       <p>Gekoppeld via IDProjectMap naar bronrecord {project.sourceRecordId}. Documentsoorten worden getoond zoals ontvangen uit Plenion.</p>
       <ul>{project.sourceDocuments.map(document => <li key={document.sourceId}>
-        <strong>{document.number} · {document.description || document.name}</strong>
+        <strong>{document.number} · {document.name?.trim() || document.description?.trim() || "Naam niet ontvangen"}</strong>
+        {document.name?.trim() && document.description?.trim() && document.description.trim() !== document.name.trim() && <span className="projects-customer">{document.description}</span>}
         <p>{document.statusLabel || "Status onbekend"} · Soort {document.documentType || "onbekend"} · Versie {document.versionNumber || "onbekend"}{document.revisionClosed ? " · Historische versie" : ""}{document.closed ? " · Uit WIP" : ""}</p>
       </li>)}</ul>
     </details>}
