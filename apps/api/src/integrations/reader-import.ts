@@ -12,7 +12,9 @@ function object(value: unknown): Record<string, unknown> {
 }
 function string(value: unknown, max: number): string {
   if (typeof value !== "string" || value.length > max) return invalid("Ongeldig tekstveld in export.");
-  return value.trim();
+  // HFSQL text may contain NUL padding. PostgreSQL rejects U+0000 in text
+  // and JSONB, so normalize before validation, hashing and persistence.
+  return value.replace(/\u0000/g, "").trim();
 }
 export function parseReaderImport(companyCode: string, input: unknown, now = Date.now()) {
   const codes = profiles[companyCode];

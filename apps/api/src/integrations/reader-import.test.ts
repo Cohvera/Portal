@@ -156,3 +156,21 @@ test("HFSQL date-times retain source wall time alongside plain dates",()=>{
  for(const raw of ["2018-02-30 05:57:01.530","2018-10-08 25:00:00","2018-10-08 05:60:00","2018-10-08 05:57:60","not a date"])
   assert.throws(()=>parseReaderImport("WARCO",lifecycleBatch([{...parent,created_date:raw}])),/Ongeldige brondatum/);
 });
+
+test("NUL padding is removed from root text, nested documents and invoice references",()=>{
+ const cleanRows=[{...parent,name:"Résidence",description:"Lijn 1\nLijn 2",invoice_number:"FAK-123"},
+  {...child,name:"Ventilatie",description:"Beschrijving",status_label:"01 - Calculatie",invoice_number:"FAK-456"}];
+ const dirtyRows=[{...cleanRows[0],name:"Rés\u0000idence\u0000",description:"Lijn 1\u0000\nLijn 2",invoice_number:"FAK-123\u0000"},
+  {...cleanRows[1],name:"Ventilatie\u0000",description:"Beschrij\u0000ving",status_label:"01 - Calculatie\u0000",invoice_number:"FAK-456\u0000"}];
+ const payload=lifecycleBatch(cleanRows);
+ const clean=parseReaderImport("WARCO",payload);
+ const dirty=parseReaderImport("WARCO",{...payload,projects:dirtyRows});
+ assert.deepEqual(dirty.projects,clean.projects);
+ assert.equal(dirty.digest,clean.digest);
+ assert.equal(dirty.projects[0].name,"Résidence");
+ assert.equal(dirty.projects[0].description,"Lijn 1\nLijn 2");
+ assert.equal(dirty.projects[0].documents[0].dates?.invoice_number,"FAK-456");
+});
+test("NUL normalization cannot silently merge duplicate source IDs",()=>{
+ assert.throws(()=>parseReaderImport("WARCO",lifecycleBatch([parent,{...parent,source_id:parent.source_id+"\u0000",number:"999"}])),/dubbele/);
+});
