@@ -69,6 +69,16 @@ export default function ProjectsPage() {
     setFormError("");
     dialog.current?.showModal();
   }
+  async function removeProject(project:Project) {
+    if(busy || !writable || !window.confirm(`Handmatig project “${project.name}” definitief verwijderen?`)) return;
+    setBusy(true);setNotice("");setRefreshError("");
+    try {
+      await request(`${url}/${project.id}`,{method:"DELETE"});
+      setNotice(`Project “${project.name}” verwijderd.`);
+      try {await refresh();} catch {setRefreshError("Project verwijderd, maar het overzicht kon niet vernieuwd worden. Herlaad de pagina.");}
+    } catch(e) {setRefreshError(e instanceof Error ? e.message : "Verwijderen is niet gelukt.");}
+    finally {setBusy(false);}
+  }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
@@ -211,7 +221,9 @@ export default function ProjectsPage() {
                       <td>{(p.externalSource === "PLENION" ? p.sourceDates?.deadline : p.dueDate)?.slice(0,10) || "Niet ingevuld"}</td>
                       <td><span className={!p.owner.trim() ? "muted" : ""}>{p.owner || "Nog toe te wijzen"}</span></td>
                       <td><span className="projects-source-badge">{p.externalSource === "PLENION" ? "Plenion" : "Portaal"}</span>{p.externalId && <span className="projects-customer">{p.externalId}</span>}</td>
-                      <td><button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button></td>
+                      <td><button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button>
+                        {writable && p.externalSource == null && p.externalId == null && p.sourceRecordId == null && <button className="project-edit" disabled={busy || p.tasks.length>0} title={p.tasks.length ? "Verplaats of verwijder eerst de gekoppelde taken" : "Handmatig project verwijderen"} aria-label={`${p.name} verwijderen`} onClick={()=>removeProject(p)}>Verwijderen</button>}
+                      </td>
                     </tr>
                   ))}</tbody>
                 </table>

@@ -220,3 +220,11 @@ Bestaande projecten blijven bewerkbaar. Verwijder handmatige projecten voor alle
 met `--apply --backup /pad/bestand.json` maakt het eerst een exclusieve back-up en verwijdert het
 alleen records zonder externalSource, externalId en sourceRecordId. Gekoppelde taken blokkeren de
 volledige verwijdering. Importgegevens blijven behouden. Bewaar back-ups buiten Git.
+
+
+Herstel van de handmatige opschoning: `node packages/database/scripts/restore-manual-projects.cjs /backup/manual-projects-TIJDSTIP.json --apply`.
+Gebruik het volledige back-upbestand. Het script herstelt de oorspronkelijke ID's en gegevens,
+controleert het bedrijf en overschrijft bestaande projecten niet. Zonder `--apply` is het een controle.
+Handmatige projecten kunnen nu afzonderlijk in Portal verwijderd worden met projects.manage-rechten,
+na bevestiging en alleen zonder gekoppelde taken. Geïmporteerde projecten zijn beschermd.
+Demo-projecten worden bij deployments niet automatisch opnieuw aangemaakt; bestaande/herstelde demo's blijven staan.

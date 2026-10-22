@@ -1,3 +1,4 @@
+import {deleteManualProject} from "./manual-projects";
 import { currentProjectListWhere, recentClosedProjectWhere } from "./project-visibility";
 import { importReaderProjects } from "./integrations/reader-import";
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
@@ -78,6 +79,10 @@ export class ProjectsController {
   @Post("projects")
   async createProject(@Param("companyCode") code: string, @Body() body: unknown) {
     throw new ForbiddenException("Projecten worden uitsluitend via een gekoppelde bron geïmporteerd. Handmatig aanmaken is uitgeschakeld.");
+  }
+  @Delete("projects/:projectId")
+  async deleteProject(@Param("companyCode") code:string,@Param("projectId") id:string){
+    return deleteManualProject(code,id);
   }
   @Patch("projects/:projectId")
   async updateProject(@Param("companyCode") code: string, @Param("projectId") id: string, @Body() body: unknown) {

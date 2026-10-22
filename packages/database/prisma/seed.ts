@@ -48,14 +48,7 @@ async function main() {
 
   }
 
-  for (const company of companies) {
-    for (const [suffix, name, customer] of [["launch", "Projectopstart & planning", "Interne werking"], ["delivery", "Oplevering residentie Parkzicht", "Residentie Parkzicht"]]) {
-      await prisma.project.upsert({
-        where: { id: `demo-${company.code}-${suffix}` }, update: {},
-        create: { id: `demo-${company.code}-${suffix}`, companyId: company.id, name, customer, owner: "Remko" }
-      });
-    }
-  }
+  // Projecten komen via imports; verwijderde demo-projecten niet opnieuw aanmaken.
 
   const plugins = [
     ["ventilation-cloud", "Ventilatie Cloud"], ["inspections", "Keuringen"],
