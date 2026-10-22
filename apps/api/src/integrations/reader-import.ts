@@ -44,7 +44,7 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
       return invalid("Ongeldige of dubbele project-ID, projectnummer of status.");
     ids.add(id);
     const revisionClosed = bit(row.revision_closed), closed = bit(row.out_of_wip);
-    const parentValue = grouped ? string(row.parent_source_id, 100) : "0";
+    const parentValue = grouped ? string(row.parent_source_id ?? "0", 100) : "0";
     if (grouped && !/^\d+$/.test(parentValue)) return invalid("Ongeldige IDProjectMap.");
     const parentId = parentValue === "0" ? null : parentValue;
     const isProjectMap = grouped ? bit(row.is_project_map) : false;
@@ -79,7 +79,7 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
     children.set(parent.id, [...(children.get(parent.id) ?? []), row]);
   }
   const numbers = new Set<string>();
-  const projects = rows.filter(row => !row.parentId && !row.revisionClosed && (lifecycle ? row.isProjectMap : codes.includes(row.code))).map(row => {
+  const projects = rows.filter(row => !row.parentId && !row.revisionClosed && (lifecycle || codes.includes(row.code))).map(row => {
     if (!lifecycle && !row.label) return invalid("De geselecteerde status heeft geen omschrijving.");
     if (numbers.has(row.number)) return invalid("Meerdere actuele versies voor hetzelfde projectnummer. Controleer de bron.");
     numbers.add(row.number);

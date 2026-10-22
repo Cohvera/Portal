@@ -174,3 +174,12 @@ test("NUL padding is removed from root text, nested documents and invoice refere
 test("NUL normalization cannot silently merge duplicate source IDs",()=>{
  assert.throws(()=>parseReaderImport("WARCO",lifecycleBatch([parent,{...parent,source_id:parent.source_id+"\u0000",number:"999"}])),/dubbele/);
 });
+
+test("v3 keeps standalone projects without ProjectMap, including null parent",()=>{
+ const standalone={...parent,source_id:"99001",number:"1800018",is_project_map:"0",parent_source_id:null};
+ const result=parseReaderImport("WARCO",lifecycleBatch([parent,standalone,child]));
+ assert.equal(result.projects.length,2);
+ assert.ok(result.projects.some(p=>p.id==="99001"));
+ assert.equal(result.documentCount,1);
+ assert.throws(()=>parseReaderImport("WARCO",lifecycleBatch([standalone,{...child,parent_source_id:"99001"}])),/projectmap/);
+});
