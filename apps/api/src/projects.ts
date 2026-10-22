@@ -1,6 +1,6 @@
 import { currentProjectListWhere, recentClosedProjectWhere } from "./project-visibility";
 import { importReaderProjects } from "./integrations/reader-import";
-import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common";
 import { prisma } from "@cohvera/database";
 
 const members = ["Remko", "Milan", "Sofie", "Thomas"];
@@ -77,10 +77,7 @@ export class ProjectsController {
   }
   @Post("projects")
   async createProject(@Param("companyCode") code: string, @Body() body: unknown) {
-    const data = projectInput(body);
-    const company = await prisma.company.findUnique({where: {code}});
-    if (!company || !company.isActive) throw new NotFoundException("Bedrijf niet gevonden.");
-    return prisma.project.create({data: {...data, companyId: company.id, customer: ""}, include: {tasks: true}});
+    throw new ForbiddenException("Projecten worden uitsluitend via een gekoppelde bron geïmporteerd. Handmatig aanmaken is uitgeschakeld.");
   }
   @Patch("projects/:projectId")
   async updateProject(@Param("companyCode") code: string, @Param("projectId") id: string, @Body() body: unknown) {

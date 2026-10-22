@@ -212,3 +212,11 @@ Deploy eerst Portal (API én web) inclusief migratie `20261022120000_project_lif
 Daarna de Q-box-reader uit qbox-connector bijwerken, opnieuw installeren en `sudo ./plenion.sh sync`.
 De bestaande timer blijft actief. Een live HFSQL-query met deze datumvelden moet na installatie
 worden gecontroleerd; lokale tests gebruiken fixtures, geen verbinding met de bedrijfsdatabase.
+
+
+Handmatig projecten aanmaken is uitgeschakeld (UI en POST /companies/:code/projects).
+Bestaande projecten blijven bewerkbaar. Verwijder handmatige projecten voor alle bedrijven met
+`packages/database/scripts/remove-manual-projects.cjs`: zonder argumenten controleert het script,
+met `--apply --backup /pad/bestand.json` maakt het eerst een exclusieve back-up en verwijdert het
+alleen records zonder externalSource, externalId en sourceRecordId. Gekoppelde taken blokkeren de
+volledige verwijdering. Importgegevens blijven behouden. Bewaar back-ups buiten Git.

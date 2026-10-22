@@ -158,8 +158,8 @@ test(
       );
       assert.equal(
         (await req("/companies/TOMME/projects", "business", "POST", {})).status,
-        400,
-      ); // Authorized, input validation runs.
+        403,
+      ); // Manual project creation is disabled.
       assert.deepEqual(
         await (await req("/companies", "unassigned")).json(),
         [],
@@ -286,7 +286,7 @@ test(
           (await req(`/companies/${code}/projects`, "admin")).status,
           403,
         );
-      // A Q-Home employee creates a project; the warehouse contract recalls the same ID.
+      // Manual creation is disabled; a database fixture exercises existing project references.
       const input = {
         name: "Warehouse reference test",
         owner: "Nieuwe collega",
@@ -299,8 +299,8 @@ test(
         "POST",
         input,
       );
-      assert.equal(created.status, 201);
-      const project = await created.json();
+      assert.equal(created.status, 403);
+      const project = await prisma.project.create({data:{...input,customer:"",company:{connect:{code:"QHOME"}}}});
       try {
         assert.equal(
           (

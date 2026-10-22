@@ -18,9 +18,6 @@ import { useCompany } from "../PortalShell";
 export default function ProjectsPage() {
   const { projects, loading, error, refresh, url, companyCode } = useProjects();
   const { companies, can, displayName } = useCompany();
-  const projectCompanies = companies.filter((company) => can("projects.create", company.code));
-  const creatable = projectCompanies.length > 0;
-  const [targetCompany, setTargetCompany] = useState("");
   const writable = can("projects.manage");
   const dialog = useRef<HTMLDialogElement>(null);
   const [formVersion, setFormVersion] = useState(0);
@@ -64,10 +61,9 @@ export default function ProjectsPage() {
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
   }
-  function open(project: Project | null = null) {
+  function open(project: Project) {
     setFormVersion((v) => v + 1);
     setEditing(project);
-    setTargetCompany(project ? companyCode : projectCompanies.find((c) => c.code === companyCode)?.code || projectCompanies[0]?.code || "");
     setStatus(project?.status || "Gepland");
     setColor(project?.statusColor || projectStatuses.Gepland);
     setFormError("");
@@ -82,17 +78,14 @@ export default function ProjectsPage() {
       setFormError("Vul een titel in.");
       return;
     }
-    if (!editing && !projectCompanies.some((c) => c.code === targetCompany)) {
-      setFormError("Kies een bedrijf waarvoor je projecten mag aanmaken.");
-      return;
-    }
+    if (!editing) return;
     setBusy(true);
     setFormError("");
     setNotice("");
     setRefreshError("");
     try {
-      await request(editing ? `${url}/${editing.id}` : `/api/companies/${encodeURIComponent(targetCompany)}/projects`, {
-        method: editing ? "PATCH" : "POST",
+      await request(`${url}/${editing.id}`, {
+        method: "PATCH",
         body: JSON.stringify({
           name,
           status,
@@ -102,7 +95,7 @@ export default function ProjectsPage() {
         }),
       });
       dialog.current?.close();
-      setNotice(editing ? "Project bijgewerkt." : `Project aangemaakt bij ${companies.find((c) => c.code === targetCompany)?.name || targetCompany}.${targetCompany !== companyCode ? " Kies dit bedrijf linksboven om het project te bekijken." : ""}`);
+      setNotice("Project bijgewerkt.");
       try {
         await refresh();
       } catch {
@@ -129,13 +122,6 @@ export default function ProjectsPage() {
             Een eenvoudig overzicht van wat er loopt en wie het opvolgt.
           </p>
         </div>
-        <button
-          className="button-primary"
-          disabled={busy || !creatable}
-          onClick={() => open()}
-        >
-          + Nieuw project
-        </button>
       </header>
       {companyCode === "QHOME" && writable && <PlenionImport key={companyCode} companyCode={companyCode} onImported={refresh} />}
       {plenion?.connected && (
@@ -146,12 +132,6 @@ export default function ProjectsPage() {
       )}
       <ProjectStatusHelp />
       <RecentClosedProjects key={companyCode} companyCode={companyCode} projects={projects} />
-      {!creatable && !loading && (
-        <p className="muted">
-          Je kunt projecten bekijken. Aanmaken vereist de bedrijfsrol Medewerker
-          of hoger.
-        </p>
-      )}
       {error && (
         <div className="alert" role="alert">
           {error}
@@ -238,9 +218,9 @@ export default function ProjectsPage() {
               </div>
             ) : !error && (
               <div className="empty-state">
-                <h2>{projects.length ? "Geen projecten voor deze selectie" : "Je eerste project begint hier"}</h2>
-                <p>{projects.length ? "Pas de zoekterm of filters aan om meer projecten te zien." : "Een titel en verantwoordelijke zijn voldoende om te starten."}</p>
-                {hasFilters ? <button className="secondary-button" onClick={resetFilters}>Filters wissen</button> : <button className="button-primary" disabled={!creatable} onClick={() => open()}>+ Nieuw project</button>}
+                <h2>{projects.length ? "Geen projecten voor deze selectie" : "Nog geen projecten ontvangen"}</h2>
+                <p>{projects.length ? "Pas de zoekterm of filters aan om meer projecten te zien." : "Projecten worden via de gekoppelde bron geïmporteerd."}</p>
+                {hasFilters && <button className="secondary-button" onClick={resetFilters}>Filters wissen</button>}
               </div>
             )}
           </div>
@@ -258,11 +238,10 @@ export default function ProjectsPage() {
           <header className="section-heading">
             <div>
               <p className="eyebrow">
-                {companies.find((c) => c.code === targetCompany)?.name ||
-                  targetCompany}
+                {companies.find((c) => c.code === companyCode)?.name || companyCode}
               </p>
               <h2 id="project-dialog-title">
-                {editing ? "Project bewerken" : "Nieuw project"}
+                Project bewerken
               </h2>
             </div>
             <button
@@ -276,15 +255,6 @@ export default function ProjectsPage() {
             </button>
           </header>
           <fieldset disabled={busy}>
-            <label>
-              Bedrijf
-              <select name="companyCode" value={targetCompany} required disabled={!!editing}
-                onChange={(event) => setTargetCompany(event.target.value)}>
-                {(editing ? companies.filter((c) => c.code === companyCode) : projectCompanies).map((company) => (
-                  <option key={company.code} value={company.code}>{company.name}</option>
-                ))}
-              </select>
-            </label>
             <label>
               Titel
               <input
