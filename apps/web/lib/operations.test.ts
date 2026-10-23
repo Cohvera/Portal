@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import type {Project} from './projects';
-import {operationsSummary,projectInWarranty} from './operations';
+import {operationsSummary,projectInWarranty,projectStatusIssue} from './operations';
 const project=(patch:Partial<Project>={}):Project=>({id:'1',name:'Werf',customer:'',owner:'',status:'Actief',statusColor:'#123',dueDate:null,tasks:[],externalSource:'PLENION',sourceStatusCode:'07',sourceIsActive:true,sourceIsClosed:false,...patch});
 test('warranty requires invoiced Plenion status and confirmed Uit WIP off',()=>{
  assert.equal(projectInWarranty(project({sourceStatusCode:'09',sourceIsActive:false})),true);
@@ -15,4 +15,15 @@ test('operations uses source deadlines and separates execution, warranty and clo
  assert.deepEqual(result.overdue.map(p=>p.id),['late']);assert.deepEqual(result.missingDeadline.map(p=>p.id),['missing']);
  assert.equal(result.unassigned.length,3);
  assert.equal(operationsSummary([],'2026-10-23').active.length,0);
+});
+
+test('status control counts closed execution projects even though they are not active',()=>{
+ const inconsistent=project({sourceStatusCode:'07',sourceIsClosed:true,sourceIsActive:false});
+ assert.ok(projectStatusIssue(inconsistent));
+ assert.ok(projectStatusIssue(project({sourceStatusCode:null,sourceStatusLabel:'07 - In Uitvoering',sourceIsClosed:true})));
+ const valid=[project(),project({sourceStatusCode:'09'}),project({sourceStatusCode:'09',sourceIsClosed:true}),project({sourceStatusCode:'02',sourceIsClosed:true}),project({sourceIsClosed:null}),project({externalSource:null,sourceIsClosed:true})];
+ for(const p of valid)assert.equal(projectStatusIssue(p),null);
+ const summary=operationsSummary([inconsistent,...valid],'2026-10-23');
+ assert.deepEqual(summary.statusIssues,[inconsistent]);
+ assert.ok(!summary.active.includes(inconsistent));
 });
