@@ -1,3 +1,4 @@
+import {ingestReaderEvents} from "./qbox-monitor";
 import { importReaderProjects } from "./reader-import";
 import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Headers, Param, Post, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { createHash, timingSafeEqual } from "node:crypto";
@@ -76,6 +77,11 @@ export function validateSnapshot(value: unknown, now = Date.now()) {
 
 @Controller("integrations/qbox")
 export class QboxImportController {
+  @Post("reader-status")
+  async readerStatus(@Body() body:unknown,@Headers("x-qbox-key") key:unknown){
+    return ingestReaderEvents(verifyQboxKey(key),body);
+  }
+
   @Post("plenion/reader-projects")
   async readerProjects(@Body() body: unknown, @Headers("x-qbox-key") key: unknown) {
     const companyCode = verifyQboxKey(key);

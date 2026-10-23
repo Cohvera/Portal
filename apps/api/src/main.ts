@@ -1,3 +1,4 @@
+import {QboxMonitorController} from "./integrations/qbox-monitor";
 import "reflect-metadata";
 import { TvController } from "./tv";
 import { QboxImportController, PlenionStatusController } from "./integrations/qbox";
@@ -402,7 +403,7 @@ class AppController {
 
 @Module({
   controllers: [
-    QboxImportController, PlenionStatusController, TvController,
+    QboxImportController, PlenionStatusController, QboxMonitorController, TvController,
     AuthController,
     AccountsController,
     InspectionsController,

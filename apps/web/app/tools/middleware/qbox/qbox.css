@@ -1,0 +1,17 @@
+.qbox-monitor {display:grid;gap:20px}
+.qbox-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.qbox-monitor .card {padding:24px;min-width:0}
+.qbox-monitor h2 {font-size:1.1rem;margin-top:0}
+.qbox-monitor p {line-height:1.6}
+.qbox-state {display:inline-block;padding:6px 10px;border-radius:8px;background:#eef2f7;color:#334155}
+.qbox-state-healthy {background:#dcfce7;color:#166534}
+.qbox-state-error {background:#fee2e2;color:#991b1b}
+.qbox-state-stale,.qbox-state-interrupted {background:#fef3c7;color:#92400e}
+.qbox-state-running {background:#dbeafe;color:#1e40af}
+.qbox-table-scroll {overflow:auto}
+.qbox-monitor table {width:100%;border-collapse:collapse;text-align:left}
+.qbox-monitor th,.qbox-monitor td {padding:12px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+.qbox-monitor th {background:#f8fafc}
+.qbox-monitor summary {cursor:pointer;font-weight:600;padding:10px 0}
+.qbox-monitor pre {white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:1000px){.qbox-metrics{grid-template-columns:1fr}}

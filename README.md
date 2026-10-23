@@ -228,3 +228,13 @@ controleert het bedrijf en overschrijft bestaande projecten niet. Zonder `--appl
 Handmatige projecten kunnen nu afzonderlijk in Portal verwijderd worden met projects.manage-rechten,
 na bevestiging en alleen zonder gekoppelde taken. Geïmporteerde projecten zijn beschermd.
 Demo-projecten worden bij deployments niet automatisch opnieuw aangemaakt; bestaande/herstelde demo's blijven staan.
+
+### Q-box-monitoring in Middleware
+
+Onder **Tools → Middleware & Integrations → Q-box-connector** staan per geselecteerd bedrijf de laatste geslaagde import, bronstand, laatste readercontact en de 100 nieuwste synchronisatiemeldingen uit de afgelopen 30 dagen. Toegang vereist `projects.read` binnen dat bedrijf. De pagina vernieuwt elke 30 seconden.
+
+De bijgewerkte standalone reader rapporteert via `POST /api/integrations/qbox/reader-status` met de bestaande bedrijfs-API-key. De server bepaalt het bedrijf uit de sleutel; een bedrijfsnaam in de payload wordt niet gebruikt. Statusmeldingen zijn idempotent per bedrijf/poging/stap. De tabel `QboxReaderEvent` vereist migratie `20261023100000_qbox_monitoring` voordat de nieuwe API start. Deploy API én web; werk daarna de reader bij. Een oude reader kan nog projecten importeren, maar levert geen nieuwe statusmeldingen.
+
+Een succes is een bevestiging op dat moment, geen live ping. Na 35 minuten zonder actuele melding verschijnt een waarschuwing; een gestarte poging zonder afronding wordt na 5 minuten als onbevestigd gemarkeerd. Reader- en uploadfouten zijn zichtbaar als aparte stappen, met HTTP-code indien beschikbaar. Volledige driverlogs blijven op de Q-box. Vertraagd verstuurde meldingen behouden hun oorspronkelijke tijdstip. Retentie wordt per bedrijf opgeruimd bij nieuwe rapportage; de leesroute toont alleen de laatste 30 dagen.
+
+De pagina toont ook de vaste 24 exportvelden van readercontract v3. Kolomselectie is nog niet actief; deze wijziging verandert geen projectfilters of importregels en stuurt geen configuratie terug naar de Q-box.

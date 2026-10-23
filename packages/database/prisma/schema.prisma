@@ -332,3 +332,18 @@ model ProjectSourceEvent {
   @@index([projectId, observedAt])
   @@index([observedAt])
 }
+
+model QboxReaderEvent {
+  id String @id @default(cuid())
+  companyCode String
+  runId String
+  phase String
+  observedAt DateTime
+  receivedAt DateTime @default(now())
+  readerVersion String
+  recordCount Int?
+  httpStatus Int?
+  @@unique([companyCode, runId, phase])
+  @@index([companyCode, observedAt])
+  @@index([companyCode, receivedAt])
+}
