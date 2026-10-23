@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import type {Project} from './projects';
-import {operationsSummary,projectInWarranty,projectStatusIssue} from './operations';
+import {operationsSummary,projectInWarranty,projectStatusIssue,projectStatusIssues} from './operations';
 const project=(patch:Partial<Project>={}):Project=>({id:'1',name:'Werf',customer:'',owner:'',status:'Actief',statusColor:'#123',dueDate:null,tasks:[],externalSource:'PLENION',sourceStatusCode:'07',sourceIsActive:true,sourceIsClosed:false,...patch});
 test('warranty requires invoiced Plenion status and confirmed Uit WIP off',()=>{
  assert.equal(projectInWarranty(project({sourceStatusCode:'09',sourceIsActive:false})),true);
@@ -21,9 +21,31 @@ test('status control counts closed execution projects even though they are not a
  const inconsistent=project({sourceStatusCode:'07',sourceIsClosed:true,sourceIsActive:false});
  assert.ok(projectStatusIssue(inconsistent));
  assert.ok(projectStatusIssue(project({sourceStatusCode:null,sourceStatusLabel:'07 - In Uitvoering',sourceIsClosed:true})));
- const valid=[project(),project({sourceStatusCode:'09'}),project({sourceStatusCode:'09',sourceIsClosed:true}),project({sourceStatusCode:'02',sourceIsClosed:true}),project({sourceIsClosed:null}),project({externalSource:null,sourceIsClosed:true})];
+ const valid=[project(),project({sourceStatusCode:'09'}),project({sourceStatusCode:'09',sourceIsClosed:true}),project({sourceIsClosed:null}),project({externalSource:null,sourceIsClosed:true})];
  for(const p of valid)assert.equal(projectStatusIssue(p),null);
  const summary=operationsSummary([inconsistent,...valid],'2026-10-23');
  assert.deepEqual(summary.statusIssues,[inconsistent]);
  assert.ok(!summary.active.includes(inconsistent));
+});
+
+test('agreed project-map loss and closure combinations',()=>{
+ for(const code of ['01','02','07'])assert.ok(projectStatusIssue(project({sourceStatusCode:code,sourceIsClosed:true})));
+ for(const closed of [true,false])assert.ok(projectStatusIssue(project({sourceStatusCode:'14',sourceIsClosed:closed})));
+ assert.ok(projectStatusIssue(project({sourceStatusCode:'04',sourceIsClosed:false})));
+ assert.equal(projectStatusIssue(project({sourceStatusCode:'04',sourceIsClosed:true})),null);
+ for(const closed of [true,false])assert.equal(projectStatusIssue(project({sourceStatusCode:'09',sourceIsClosed:closed})),null);
+});
+test('offers are checked separately, invoices are excluded and projects counted once',()=>{
+ const doc=(statusCode:string,closed:boolean,documentType='601')=>({sourceId:'11379',number:'1809629',name:'Ventilatie',description:'',statusCode,statusLabel:'',closed,documentType,versionNumber:'1',revisionClosed:false});
+ for(const [code,closed] of [['01',true],['02',true],['07',true],['14',false],['04',false],['04',true]] as const){
+  const p=project({sourceDocuments:[doc(code,closed)]});
+  assert.ok(projectStatusIssues(p).length,`${code}/${closed}`);
+  assert.ok(projectStatusIssues(p)[0].record.includes('1809629'));
+  assert.equal(operationsSummary([p],'2026-10-23').statusIssues.length,1);
+ }
+ for(const [code,closed] of [['14',true],['09',false],['09',true],['02',false]] as const)assert.deepEqual(projectStatusIssues(project({sourceDocuments:[doc(code,closed)]})),[]);
+ assert.deepEqual(projectStatusIssues(project({sourceDocuments:[doc('04',false,'602')]})),[]);
+ const multiple=project({sourceStatusCode:'07',sourceIsClosed:true,sourceDocuments:[doc('04',false)]});
+ assert.equal(projectStatusIssues(multiple).length,3);
+ assert.equal(operationsSummary([multiple],'2026-10-23').statusIssues.length,1);
 });
