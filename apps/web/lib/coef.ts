@@ -67,11 +67,11 @@ export const coefHubs: HubDefinition[] = [
     name: "Operations Hub",
     shortName: "Operations",
     tagline: "Van planning tot oplevering: één operationeel beeld.",
-    purpose: "Geeft management en projectteams realtime zicht op workload, uitvoering, materiaal, projecten, werkbonnen en uitzonderingen.",
+    purpose: "Toont projecten in uitvoering en garantie, deadlines, open taken en recente wijzigingen voor het geselecteerde bedrijf.",
     cards: [
-      { title: "Projectcontrol", description: "Projectstatus, deadlines, risico's en volgende acties.", status: "planned" },
-      { title: "Werkvoorraad", description: "Planning, installatieteams en capaciteit per business unit.", status: "planned" },
-      { title: "Exceptions", description: "Blokkades, ontbrekend materiaal, laattijdige acties en escalaties.", status: "attention" },
+      { title: "Projectoverzicht", description: "Projecten in uitvoering en garantie, met status en verantwoordelijke.", status: "active", href: "/hubs/operations" },
+      { title: "Deadlines", description: "Komende en verstreken deadlines bij projecten in uitvoering.", status: "active", href: "/hubs/operations" },
+      { title: "Opvolging", description: "Open taken, ontbrekende projectgegevens en recente updates.", status: "active", href: "/hubs/operations" },
       { title: "Field tools", description: "Werkbonnen, keuringen en onderaannemers rechtstreeks vanuit de operatie.", status: "active", href: "/tools" }
     ]
   },
