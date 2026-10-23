@@ -1,5 +1,6 @@
+import {requestReaderSync} from './qbox-commands';
 import {extraColumns,saveReaderConfig} from "./qbox-config";
-import {BadRequestException,Controller,ForbiddenException,Get,Param,Body,Put} from '@nestjs/common';
+import {BadRequestException,Controller,ForbiddenException,Get,Param,Body,Put,Post} from '@nestjs/common';
 import {prisma} from '@cohvera/database';
 const phases=['started','read_ok','configuration_failed','read_failed','upload_failed','success'] as const;
 export function readerEvents(input:unknown,now=Date.now()){
@@ -42,6 +43,9 @@ const columns=[
 ].map(([source,field])=>({source,field}));
 @Controller('companies/:companyCode/middleware/qbox')
 export class QboxMonitorController {
+ @Post('sync')
+ sync(@Param('companyCode')companyCode:string){return requestReaderSync(companyCode);}
+
  @Put("columns")
  save(@Param("companyCode")companyCode:string,@Body()body:unknown){return saveReaderConfig(companyCode,body);}
  @Get()

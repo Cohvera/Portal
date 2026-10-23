@@ -350,6 +350,10 @@ model QboxReaderEvent {
 }
 
 model QboxReaderConfig {
+  syncRequestId String?
+  syncAcknowledgedId String?
+  syncRequestedAt DateTime?
+  commandPollAt DateTime?
   companyCode String @id
   selectedColumns String[] @default([])
   projectFilter Json?

@@ -16,6 +16,11 @@ test('schema report rejects expressions, invalid versions and unbounded metadata
  for(const columns of [[],['P.MEMO'],['MEMO','MEMO'],Array(2001).fill('x')])assert.throws(()=>schemaReport({columns,readerVersion:'3.2'}));
  assert.throws(()=>schemaReport({columns:['MEMO'],readerVersion:'3.2',appliedRevision:-1}));
 });
+test('HFSQL trailing NUL padding is normalized, embedded NULs and duplicate names are rejected',()=>{
+ assert.deepEqual(schemaReport({columns:['IDProj\u0000\u0000','MEMO\u0000'],readerVersion:'3.3'}).columns,['IDProj','MEMO']);
+ for(const columns of [['ME\u0000MO'],['\u0000'],['MEMO','MEMO\u0000'],['MEMO'+'\u0000'.repeat(1024)]])
+  assert.throws(()=>schemaReport({columns,readerVersion:'3.3'}));
+});
 test('configuration exchange uses key company and acknowledges only an existing revision',async()=>{
  const originals=[prisma.company.findUnique,prisma.qboxReaderConfig.upsert,prisma.qboxReaderConfig.updateMany];
  const updates:any[]=[];

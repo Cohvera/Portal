@@ -39,12 +39,16 @@ function statuses(input:unknown):{code:string;label:string}[]|undefined{
 }
 export function schemaReport(input:unknown){
  const b=input as Record<string,unknown>;
- if(!b||typeof b!=='object'||!Array.isArray(b.columns)||!b.columns.length||b.columns.length>2000||b.columns.some(c=>typeof c!=='string'||!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(c))||new Set(b.columns).size!==b.columns.length)
+ if(!b||typeof b!=='object'||!Array.isArray(b.columns)||!b.columns.length||b.columns.length>2000||b.columns.some(c=>typeof c!=='string'||c.length>1024))
+  throw new BadRequestException('Ongeldige PROJ-kolommetadata.');
+ // Older HFSQL readers include trailing NUL buffer padding in column names.
+ const columns=(b.columns as string[]).map(c=>c.replace(/\u0000+$/g,''));
+ if(columns.some(c=>!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(c))||new Set(columns).size!==columns.length)
   throw new BadRequestException('Ongeldige PROJ-kolommetadata.');
  if(typeof b.readerVersion!=='string'||!/^\d{1,3}\.\d{1,3}(?:\.\d{1,3})?$/.test(b.readerVersion))throw new BadRequestException('Ongeldige readerversie.');
  const applied=b.appliedRevision;
  if(applied!=null&&(!Number.isSafeInteger(applied)||Number(applied)<0))throw new BadRequestException('Ongeldige configuratieversie.');
- return {statuses:statuses(b.statuses),columns:b.columns as string[],readerVersion:b.readerVersion,appliedRevision:applied as number|undefined};
+ return {statuses:statuses(b.statuses),columns,readerVersion:b.readerVersion,appliedRevision:applied as number|undefined};
 }
 export async function exchangeReaderConfig(companyCode:string,input:unknown){
  const report=schemaReport(input);

@@ -1,3 +1,4 @@
+import {pollReaderCommand} from './qbox-commands';
 import {exchangeReaderConfig} from "./qbox-config";
 import {ingestReaderEvents} from "./qbox-monitor";
 import { importReaderProjects } from "./reader-import";
@@ -78,6 +79,9 @@ export function validateSnapshot(value: unknown, now = Date.now()) {
 
 @Controller("integrations/qbox")
 export class QboxImportController {
+  @Post("reader-command")
+  readerCommand(@Body() body:unknown,@Headers("x-qbox-key") key:unknown){return pollReaderCommand(verifyQboxKey(key),body);}
+
   @Post("reader-config")
   readerConfig(@Body() body:unknown,@Headers("x-qbox-key") key:unknown){
     return exchangeReaderConfig(verifyQboxKey(key),body);
