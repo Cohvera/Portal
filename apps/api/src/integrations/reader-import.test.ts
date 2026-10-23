@@ -28,6 +28,7 @@ test("import upserts only selected projects and preserves local fields", async (
     (prisma as any).$transaction = async (run: any) => run({
       $executeRaw: async () => 1,
       company: {findUnique: async () => ({id:"qhome-id",isActive:true})},
+      qboxReaderConfig:{findUnique:async()=>null},
       qboxImport: {findUnique:async()=>null, upsert:async()=>({})},
       project: {upsert:async (args:any)=>{calls.push(args); return {};}},
     });
@@ -67,6 +68,7 @@ test("reimport marks old child projects without deleting data or moving other co
   try {
     (prisma as any).$transaction = async (run:any) => run({
       $executeRaw:async()=>1, company:{findUnique:async()=>({id:"qhome-id",isActive:true})},
+      qboxReaderConfig:{findUnique:async()=>null},
       qboxImport:{findUnique:async()=>null,upsert:async()=>({})},
       project:{upsert:async(args:any)=>{roots.push(args);},updateMany:async(args:any)=>{updates.push(args);}},
     });
@@ -98,6 +100,7 @@ test("departures preserve first date and returning projects clear it", async () 
   try {
     (prisma as any).$transaction=async(run:any)=>run({
       $executeRaw:async()=>1,company:{findUnique:async()=>({id:"warco-id",isActive:true})},
+      qboxReaderConfig:{findUnique:async()=>null},
       qboxImport:{findUnique:async()=>previous,upsert:async(args:any)=>{previous=args.update;}},
       project:{upsert:async(args:any)=>{roots.push(args);},updateMany:async(args:any)=>{updates.push(args);}},
     });
@@ -131,7 +134,8 @@ test("v3 establishes baseline, then records changes, rejects downgrade and dupli
  try{
   (prisma as any).$transaction=async(run:any)=>run({
    $executeRaw:async()=>1,company:{findUnique:async()=>({id:"warco-id",isActive:true})},
-   qboxImport:{findUnique:async()=>previous,upsert:async(args:any)=>{previous=args.update;}},
+   qboxReaderConfig:{findUnique:async()=>null},
+      qboxImport:{findUnique:async()=>previous,upsert:async(args:any)=>{previous=args.update;}},
    project:{findMany:async(args:any)=>{assert.equal(args.where.companyId,"warco-id");return stored?[stored]:[];},
     upsert:async(args:any)=>{stored={...(stored || args.create),...args.update,id:"root-id",externalId:parent.number};return stored;},updateMany:async()=>({count:0})},
    projectSourceEvent:{createMany:async(args:any)=>events.push(...args.data),create:async(args:any)=>events.push(args.data)},
@@ -173,4 +177,40 @@ test("NUL padding is removed from root text, nested documents and invoice refere
 });
 test("NUL normalization cannot silently merge duplicate source IDs",()=>{
  assert.throws(()=>parseReaderImport("WARCO",lifecycleBatch([parent,{...parent,source_id:parent.source_id+"\u0000",number:"999"}])),/dubbele/);
+});
+
+test("extra columns remain source data for roots and documents, including null and NUL values",()=>{
+ const root={...row,parent_source_id:"0",is_project_map:"1",extra_fields:{A_PC:"8500",MEMO:"a\u0000b"}};
+ const child={...row,source_id:"13",number:"2",parent_source_id:"12",is_project_map:"0",extra_fields:{MEMO:null}};
+ const result=parseReaderImport("WARCO",{...batch(),schema_version:3,count:2,projects:[root,child]});
+ assert.deepEqual(result.projects[0].extraFields,{A_PC:"8500",MEMO:"ab"});
+ assert.deepEqual(result.projects[0].documents[0].extraFields,{MEMO:null});
+ assert.throws(()=>parseReaderImport("WARCO",{...batch(),schema_version:3,projects:[{...root,extra_fields:{password:"secret"}}]}));
+});
+
+test('filtered export validates parent status and WIP, not document status or WIP',()=>{
+ const root={...row,status_code:'09',out_of_wip:'1',parent_source_id:'0',is_project_map:'1'};
+ const child={...row,source_id:'13',number:'2',parent_source_id:'12',is_project_map:'0'};
+ const body={...batch(),schema_version:3,count:2,projects:[root,child],selection:{statusCodes:['09'],outOfWip:'on'},config_revision:4};
+ const parsed=parseReaderImport('WARCO',body);assert.equal(parsed.projects[0].documents.length,1);
+ assert.throws(()=>parseReaderImport('WARCO',{...body,selection:{statusCodes:['07'],outOfWip:'on'}}));
+ assert.throws(()=>parseReaderImport('WARCO',{...body,selection:{statusCodes:['09'],outOfWip:'off'}}));
+ assert.throws(()=>parseReaderImport('WARCO',{...body,config_revision:undefined}));
+});
+test('import rejects stale selection and old readers before modifying projects; valid empty selection is accepted',async()=>{
+ const {prisma}=await import('@cohvera/database');const {importReaderProjects}=await import('./reader-import');
+ const original=prisma.$transaction;let written=false;
+ const selection={statusCodes:['07'],outOfWip:'off'};
+ try{
+  (prisma as any).$transaction=async(fn:any)=>fn({
+   $executeRaw:async()=>1,company:{findUnique:async()=>({id:'warco',isActive:true})},
+   qboxReaderConfig:{findUnique:async(args:any)=>{assert.equal(args.where.companyCode,'WARCO');return {revision:3,projectFilter:selection};}},
+   qboxImport:{findUnique:async()=>null,upsert:async()=>{written=true;}},
+   project:{findMany:async()=>[]},
+  });
+  const body={...batch([]),schema_version:3};
+  await assert.rejects(()=>importReaderProjects('WARCO',body));
+  await assert.rejects(()=>importReaderProjects('WARCO',{...body,selection,config_revision:2}));assert.equal(written,false);
+  await importReaderProjects('WARCO',{...body,selection,config_revision:3});assert.equal(written,true);
+ }finally{prisma.$transaction=original;}
 });

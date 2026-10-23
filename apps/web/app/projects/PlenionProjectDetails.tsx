@@ -4,6 +4,10 @@ import type { Project } from "../../lib/projects";
 const flag = (value: boolean | null | undefined) => value === true ? "Ja (true)" : value === false ? "Nee (false)" : "Niet ontvangen";
 const text = (value: string | null | undefined) => value == null ? "Niet ontvangen" : value.trim() || "Leeg in de bron";
 
+function ExtraFields({values}:{values?:Record<string,string|null>|null}){
+ if(!values||!Object.keys(values).length)return null;
+ return <details><summary>Extra HFSQL-bronvelden ({Object.keys(values).length})</summary><dl>{Object.entries(values).map(([key,value])=><div key={key}><dt><code>{key}</code></dt><dd style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{text(value)}</dd></div>)}</dl></details>;
+}
 export function PlenionProjectDetails({ project }: { project: Project }) {
   const fields = [
     ["Projectnummer", "number", text(project.externalId)],
@@ -26,19 +30,19 @@ export function PlenionProjectDetails({ project }: { project: Project }) {
         <strong>{document.number} · {document.name?.trim() || document.description?.trim() || "Naam niet ontvangen"}</strong>
         {document.name?.trim() && document.description?.trim() && document.description.trim() !== document.name.trim() && <span className="projects-customer">{document.description}</span>}
         <p>{document.statusLabel || "Status onbekend"} · Soort {document.documentType || "onbekend"} · Versie {document.versionNumber || "onbekend"}{document.revisionClosed ? " · Historische versie" : ""}{document.closed ? " · Administratief afgesloten (Uit WIP aan)" : " · Niet administratief afgesloten (Uit WIP uit)"}</p>
-        <SourceDates dates={document.dates} />
+        <SourceDates dates={document.dates} /><ExtraFields values={document.extraFields}/>
       </li>)}</ul>
     </details>}
     <details className="projects-plenion-details">
       <summary>Gegevens uit Plenion<span className="projects-visually-hidden"> voor {project.name}</span></summary>
       <p>De laatst opgeslagen brongegevens in Cohvera. Dit is geen rechtstreekse live-opvraag bij Plenion.</p>
-      <SourceDates dates={project.sourceDates} />
+      <SourceDates dates={project.sourceDates} /><ExtraFields values={project.sourceExtraFields}/>
       <dl>
         {fields.map(([label, key, value]) => (
           <div key={key}><dt>{label} <code>{key}</code></dt><dd>{value}</dd></div>
         ))}
       </dl>
-      <p>Hoofdprojecten tonen de huidige versie. Gekoppelde records kunnen ook historische versies bevatten. Een verantwoordelijke wordt niet meegestuurd; die beheer je in Cohvera. ‘Niet ontvangen’ betekent niet ‘nee’.</p>
+      <p>Hoofdprojecten tonen de huidige versie. Gekoppelde records kunnen ook historische versies bevatten. De lokale verantwoordelijke beheer je in Cohvera; extra bronvelden veranderen die niet. ‘Niet ontvangen’ betekent niet ‘nee’.</p>
     </details>
     </>
   );

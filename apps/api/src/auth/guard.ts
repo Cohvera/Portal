@@ -96,7 +96,7 @@ export class PortalGuard implements CanActivate {
     if (code) {
       const write = !["GET", "HEAD"].includes(req.method);
       let permission: string;
-      if (path.includes("/middleware/")) permission = "projects.read";
+      if (path.includes("/middleware/")) permission = write ? "projects.manage" : "projects.read";
       else if (path.includes("/strategy/"))
         permission = write ? "strategy.manage" : "strategy.read";
       else if (path.includes("/inspections"))

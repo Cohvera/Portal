@@ -52,7 +52,8 @@ test("Import upserts stable source IDs, preserves local fields and rejects older
   const tx = {
     $executeRaw: async () => 1,
     company: {findUnique:async(args:any)=>{assert.equal(args.where.code,"QHOME");return {id:"company-qhome",isActive:true};}},
-    qboxImport: {findUnique:async()=>previous,upsert:async(args:any)=>{previous=previous?{...previous,...args.update}:args.create;return previous;}},
+    qboxReaderConfig:{findUnique:async()=>null},
+      qboxImport: {findUnique:async()=>previous,upsert:async(args:any)=>{previous=previous?{...previous,...args.update}:args.create;return previous;}},
     project: {upsert:async(args:any)=>{const key=args.where.companyId_externalSource_externalId.externalId;projects.set(key,projects.has(key)?{...projects.get(key),...args.update}:args.create);}},
   };
   prisma.$transaction = (async (fn:any)=>fn(tx)) as typeof original;
@@ -137,6 +138,7 @@ test("reader endpoint imports into server-selected company, ignoring payload com
     (prisma as any).$transaction = async (run:any) => run({
       $executeRaw:async()=>1,
       company:{findUnique:async(args:any)=>{selected=args.where.code;return {id:"qhome",isActive:true};}},
+      qboxReaderConfig:{findUnique:async()=>null},
       qboxImport:{findUnique:async()=>null,upsert:async()=>({})},
     });
     const result = await new QboxImportController().readerProjects({
@@ -177,6 +179,7 @@ test("per-company key decides reader destination even when legacy target and pay
     (prisma as any).$transaction = async (run:any) => run({
       $executeRaw:async()=>1,
       company:{findUnique:async(args:any)=>{assert.equal(args.where.code,"QHOME"); return {id:"qhome",isActive:true};}},
+      qboxReaderConfig:{findUnique:async()=>null},
       qboxImport:{findUnique:async()=>null,upsert:async(args:any)=>{assert.equal(args.where.companyCode,"QHOME");}},
     });
     const result = await new QboxImportController().readerProjects({
@@ -197,6 +200,7 @@ test("Warco reader key writes exclusively to Warco despite a Q-Home payload", as
     (prisma as any).$transaction = async (run:any) => run({
       $executeRaw:async()=>1,
       company:{findUnique:async(args:any)=>{assert.equal(args.where.code,"WARCO");return {id:"warco",isActive:true};}},
+      qboxReaderConfig:{findUnique:async()=>null},
       qboxImport:{findUnique:async()=>null,upsert:async(args:any)=>{assert.equal(args.where.companyCode,"WARCO");}},
       project:{upsert:async(args:any)=>{assert.equal(args.create.companyId,"warco");assert.equal(args.where.companyId_externalSource_externalId.companyId,"warco");}},
     });

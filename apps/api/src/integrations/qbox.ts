@@ -1,3 +1,4 @@
+import {exchangeReaderConfig} from "./qbox-config";
 import {ingestReaderEvents} from "./qbox-monitor";
 import { importReaderProjects } from "./reader-import";
 import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Headers, Param, Post, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
@@ -77,6 +78,11 @@ export function validateSnapshot(value: unknown, now = Date.now()) {
 
 @Controller("integrations/qbox")
 export class QboxImportController {
+  @Post("reader-config")
+  readerConfig(@Body() body:unknown,@Headers("x-qbox-key") key:unknown){
+    return exchangeReaderConfig(verifyQboxKey(key),body);
+  }
+
   @Post("reader-status")
   async readerStatus(@Body() body:unknown,@Headers("x-qbox-key") key:unknown){
     return ingestReaderEvents(verifyQboxKey(key),body);

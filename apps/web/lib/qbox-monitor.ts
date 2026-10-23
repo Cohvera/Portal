@@ -2,9 +2,11 @@
 import {useEffect,useState} from 'react';
 import {request} from './projects';
 export type ReaderEvent={id:string;runId:string;phase:string;observedAt:string;receivedAt:string;readerVersion:string;recordCount:number|null;httpStatus:number|null};
-export type Monitor={state:string;lastContactAt:string|null;lastImport:{receivedAt:string;sourceObservedAt:string;projectCount:number;contractVersion:number;sourceKind:string}|null;events:ReaderEvent[];expectedIntervalMinutes:number;columns:{source:string;field:string}[];columnSelectionEnabled:boolean;exportSchemaVersion:number};
+export type ProjectSelection={statusCodes:string[];outOfWip:'any'|'on'|'off'};
+export type ReaderConfiguration={projectFilter:ProjectSelection|null;availableStatuses:{code:string;label:string}[]|null;revision:number;appliedRevision:number|null;selectedColumns:string[];schemaColumns:string[];schemaReportedAt:string|null;readerVersion:string|null};
+export type Monitor={configuration:ReaderConfiguration|null;extraColumns:{source:string;label:string;group:string}[];state:string;lastContactAt:string|null;lastImport:{receivedAt:string;sourceObservedAt:string;projectCount:number;contractVersion:number;sourceKind:string}|null;events:ReaderEvent[];expectedIntervalMinutes:number;columns:{source:string;field:string}[];columnSelectionEnabled:boolean;exportSchemaVersion:number};
 export const stateLabels:Record<string,string>={unknown:'Status nog niet beschikbaar',stale:'Geen recente melding',error:'Laatste poging mislukt',interrupted:'Afronding niet bevestigd',running:'Synchronisatie bezig',healthy:'Laatste sync geslaagd'};
-export const phaseLabels:Record<string,string>={started:'Synchronisatie gestart',read_ok:'HFSQL uitgelezen; export gemaakt',read_failed:'Uitlezen of export mislukt',upload_failed:'Upload naar Portal mislukt',success:'Upload bevestigd door Portal'};
+export const phaseLabels:Record<string,string>={started:'Synchronisatie gestart',read_ok:'HFSQL uitgelezen; export gemaakt',configuration_failed:'Configuratie ophalen of controleren mislukt',read_failed:'Uitlezen of export mislukt',upload_failed:'Upload naar Portal mislukt',success:'Upload bevestigd door Portal'};
 export const monitorTime=(value?:string|null)=>value?new Date(value).toLocaleString('nl-BE'):'Nog niet ontvangen';
 export function useQboxMonitor(companyCode:string){
  const [result,setResult]=useState<{code:string;data:Monitor}|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);

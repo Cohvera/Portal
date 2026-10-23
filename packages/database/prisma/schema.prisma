@@ -181,6 +181,7 @@ model Project {
   sourceRecordId String?
   sourceParentRecordId String?
   sourceStatusCode String?
+  sourceExtraFields Json?
   sourceDates Json?
   sourceEvents ProjectSourceEvent[]
   sourceDocuments Json?
@@ -346,4 +347,17 @@ model QboxReaderEvent {
   @@unique([companyCode, runId, phase])
   @@index([companyCode, observedAt])
   @@index([companyCode, receivedAt])
+}
+
+model QboxReaderConfig {
+  companyCode String @id
+  selectedColumns String[] @default([])
+  projectFilter Json?
+  availableStatuses Json?
+  revision Int @default(0)
+  appliedRevision Int?
+  schemaColumns String[] @default([])
+  schemaReportedAt DateTime?
+  readerVersion String?
+  updatedAt DateTime @updatedAt
 }

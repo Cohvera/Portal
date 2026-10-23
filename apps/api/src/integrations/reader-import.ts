@@ -1,3 +1,4 @@
+import {extraFields,projectFilter} from "./qbox-config";
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 import { prisma } from "@cohvera/database";
 import { createHash } from "node:crypto";
@@ -20,7 +21,11 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
   const codes = profiles[companyCode];
   if (!codes) throw new ForbiddenException("Voor dit bedrijf is nog geen Plenion-importprofiel ingesteld.");
   const body = object(input);
+  const selection=projectFilter(body.selection);
+  const configRevision=body.config_revision;
+  if(selection&&(!Number.isSafeInteger(configRevision)||Number(configRevision)<0))return invalid('Configuratieversie ontbreekt bij gefilterde export.');
   const lifecycle = body.schema_version === 3;
+  if(selection&&!lifecycle)return invalid('Projectfilter vereist readerexport v3.');
   const grouped = lifecycle || body.schema_version === 2;
   if ((!grouped && body.schema_version !== 1) || body.source !== "plenion_reader_projects" || body.truncated !== false)
     return invalid("Kies een volledige portal-projects.json-export van de reader.");
@@ -66,7 +71,7 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
       }
       dates.invoice_number=string(row.invoice_number ?? "", 100) || null;
     }
-    return {id,number,name,description,code,label,closed,revisionClosed,parentId,isProjectMap,documentType,versionNumber,dates};
+    return {id,number,name,description,code,label,closed,revisionClosed,parentId,isProjectMap,documentType,versionNumber,dates,extraFields:extraFields(row.extra_fields)};
   });
   const byId = new Map(rows.map(row => [row.id,row]));
   const children = new Map<string, typeof rows>();
@@ -84,16 +89,17 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
     if (numbers.has(row.number)) return invalid("Meerdere actuele versies voor hetzelfde projectnummer. Controleer de bron.");
     numbers.add(row.number);
     const documents = (children.get(row.id) ?? []).map(child => ({
-      sourceId:child.id, number:child.number, name:child.name, description:child.description,
+      extraFields:child.extraFields, sourceId:child.id, number:child.number, name:child.name, description:child.description,
       statusCode:child.code, statusLabel:child.label, documentType:child.documentType,
       versionNumber:child.versionNumber, revisionClosed:child.revisionClosed, closed:child.closed, ...(lifecycle ? {dates:child.dates} : {}),
     })).sort((a,b) => a.sourceId.localeCompare(b.sourceId));
     return {...row, documents};
   }).sort((a,b) => a.number.localeCompare(b.number));
+  if(selection&&projects.some(p=>(selection.statusCodes.length&&!selection.statusCodes.includes(p.code))||(selection.outOfWip==='on'&&!p.closed)||(selection.outOfWip==='off'&&p.closed)))return invalid('Hoofdproject valt buiten de opgegeven readerselectie.');
   const documentCount = projects.reduce((sum,p)=>sum+p.documents.length,0);
   const skipped = rows.length - projects.length - documentCount;
-  const digest = createHash("sha256").update(JSON.stringify({companyCode, observed, grouped, lifecycle, projects})).digest("hex");
-  return {projects, skipped, documentCount, grouped, lifecycle, observed: new Date(observed), digest};
+  const digest = createHash("sha256").update(JSON.stringify({companyCode, observed, grouped, lifecycle, projects,...(selection?{selection,configRevision}:{})})).digest("hex");
+  return {projects, skipped, documentCount, grouped, lifecycle, selection,configRevision, observed: new Date(observed), digest};
 }
 
 export async function importReaderProjects(companyCode: string, input: unknown) {
@@ -103,6 +109,9 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(71620501)`;
     const company = await tx.company.findUnique({where:{code:companyCode}});
     if (!company?.isActive) throw new ForbiddenException("Bedrijf niet actief.");
+    const readerConfig=await tx.qboxReaderConfig.findUnique({where:{companyCode}});
+    const expectedSelection=projectFilter(readerConfig?.projectFilter);
+    if(JSON.stringify(expectedSelection)!==JSON.stringify(parsed.selection)||(expectedSelection&&parsed.configRevision!==readerConfig?.revision))throw new ConflictException('De export gebruikt een andere projectselectie. Laat de bijgewerkte Q-box opnieuw synchroniseren.');
     const previous = await tx.qboxImport.findUnique({where:{companyCode}});
     if (previous && previous.contractVersion > (parsed.lifecycle ? 7 : parsed.grouped ? 6 : 5))
       throw new ConflictException("Gebruik de nieuwste readerexport; terugschakelen naar een oudere exportversie is niet toegestaan.");
@@ -116,7 +125,7 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
     const oldByNumber = new Map(oldProjects.map(p=>[p.externalId,p]));
     const recordChanges = parsed.lifecycle && previous?.contractVersion === 7;
     for (const p of parsed.projects) {
-      const source = {sourceRecordId:p.id, sourceStatusLabel:p.label, sourceIsClosed:p.closed,
+      const source = {sourceExtraFields:p.extraFields,sourceRecordId:p.id, sourceStatusLabel:p.label, sourceIsClosed:p.closed,
         sourceOutOfSelectionAt:null, sourceIsActive:!p.closed && profiles[companyCode].includes(p.code), sourceDescription:p.description, sourceSeenAt:parsed.observed,
         ...(parsed.grouped ? {sourceParentRecordId:null, sourceDocuments:p.documents} : {}),
         ...(parsed.lifecycle ? {sourceStatusCode:p.code,sourceDates:p.dates,sourcePlannedAt:p.dates.planned_date ? new Date(p.dates.planned_date.slice(0,10)) : null} : {})};
@@ -148,7 +157,7 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
     const currentChildren = new Set(parsed.projects.flatMap(p=>p.documents.map(d=>d.sourceId)));
     if(recordChanges) for(const old of oldByNumber.values()) {
       if(!currentChildren.has(old.sourceRecordId || "") && old.sourceSeenAt?.getTime()===previous.sourceObservedAt.getTime())
-        await tx.projectSourceEvent.create({data:{projectId:old.id,observedAt:parsed.observed,message:"Hoofdproject niet meer aangeleverd; afsluiting niet bevestigd"}});
+        await tx.projectSourceEvent.create({data:{projectId:old.id,observedAt:parsed.observed,message:parsed.selection?"Hoofdproject niet meer in readerselectie; afsluiting niet bevestigd":"Hoofdproject niet meer aangeleverd; afsluiting niet bevestigd"}});
     }
     // Record only transitions from the previous accepted selection. Do not date
     // already historical records as newly closed when this feature is deployed.

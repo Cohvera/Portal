@@ -13,7 +13,7 @@ test('old success is not online; missing completion and failures are distinct',(
  const current={phase:'success',observedAt:new Date(now),receivedAt:new Date(now)};
  assert.equal(connectionState(null,null,now),'unknown');assert.equal(connectionState(current,current.receivedAt,now),'healthy');
  assert.equal(connectionState(current,current.receivedAt,now+36*60000),'stale');
- assert.equal(connectionState({...current,phase:'started'},current.receivedAt,now+6*60000),'interrupted');
+ assert.equal(connectionState({...current,phase:'started'},current.receivedAt,now+10*60000),'interrupted');
  assert.equal(connectionState({...current,phase:'read_ok'},current.receivedAt,now),'running');
  assert.equal(connectionState({...current,phase:'read_failed'},current.receivedAt,now),'error');
  assert.equal(connectionState({...current,observedAt:new Date(now-3600000)},current.receivedAt,now),'stale');
@@ -28,11 +28,13 @@ test('ingest derives company from key context, deduplicates phases and prunes on
  }finally{prisma.company.findUnique=originalCompany;prisma.$transaction=originalTransaction;}
 });
 test('dashboard queries are all company scoped',async()=>{
+ const originalConfig=prisma.qboxReaderConfig.findUnique;
  const originalImport=prisma.qboxImport.findUnique,originalMany=prisma.qboxReaderEvent.findMany,originalFirst=prisma.qboxReaderEvent.findFirst;
  try{
+  (prisma.qboxReaderConfig as any).findUnique=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return null;};
   (prisma.qboxImport as any).findUnique=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return null;};
   (prisma.qboxReaderEvent as any).findMany=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return [];};
   (prisma.qboxReaderEvent as any).findFirst=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return null;};
-  const result=await new QboxMonitorController().get('QHOME');assert.equal(result.state,'unknown');assert.equal(result.columnSelectionEnabled,false);assert.equal(result.columns.length,24);
- }finally{prisma.qboxImport.findUnique=originalImport;prisma.qboxReaderEvent.findMany=originalMany;prisma.qboxReaderEvent.findFirst=originalFirst;}
+  const result=await new QboxMonitorController().get('QHOME');assert.equal(result.state,'unknown');assert.equal(result.columnSelectionEnabled,true);assert.equal(result.columns.length,24);
+ }finally{prisma.qboxReaderConfig.findUnique=originalConfig;prisma.qboxImport.findUnique=originalImport;prisma.qboxReaderEvent.findMany=originalMany;prisma.qboxReaderEvent.findFirst=originalFirst;}
 });

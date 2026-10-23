@@ -1,6 +1,7 @@
-import {BadRequestException,Controller,ForbiddenException,Get,Param} from '@nestjs/common';
+import {extraColumns,saveReaderConfig} from "./qbox-config";
+import {BadRequestException,Controller,ForbiddenException,Get,Param,Body,Put} from '@nestjs/common';
 import {prisma} from '@cohvera/database';
-const phases=['started','read_ok','read_failed','upload_failed','success'] as const;
+const phases=['started','read_ok','configuration_failed','read_failed','upload_failed','success'] as const;
 export function readerEvents(input:unknown,now=Date.now()){
  const body=input as {events?:unknown[]};
  if(!body || !Array.isArray(body.events) || !body.events.length || body.events.length>100)throw new BadRequestException('Ongeldige statusbatch.');
@@ -28,8 +29,8 @@ export async function ingestReaderEvents(companyCode:string,body:unknown){
 export function connectionState(event:{phase:string;observedAt:Date;receivedAt:Date}|null,lastContact:Date|null,now=Date.now()){
  if(!event)return lastContact?'stale':'unknown';
  if(!lastContact || now-lastContact.getTime()>35*60000 || now-event.observedAt.getTime()>35*60000)return 'stale';
- if(event.phase==='read_failed'||event.phase==='upload_failed')return 'error';
- if(event.phase==='started'||event.phase==='read_ok')return now-event.observedAt.getTime()>5*60000?'interrupted':'running';
+ if(event.phase==='configuration_failed'||event.phase==='read_failed'||event.phase==='upload_failed')return 'error';
+ if(event.phase==='started'||event.phase==='read_ok')return now-event.observedAt.getTime()>9*60000?'interrupted':'running';
  return 'healthy';
 }
 const columns=[
@@ -41,16 +42,19 @@ const columns=[
 ].map(([source,field])=>({source,field}));
 @Controller('companies/:companyCode/middleware/qbox')
 export class QboxMonitorController {
+ @Put("columns")
+ save(@Param("companyCode")companyCode:string,@Body()body:unknown){return saveReaderConfig(companyCode,body);}
  @Get()
  async get(@Param('companyCode')companyCode:string){
-  const [lastImport,events,contact]=await Promise.all([
+  const [lastImport,events,contact,configuration]=await Promise.all([
    prisma.qboxImport.findUnique({where:{companyCode},select:{receivedAt:true,sourceObservedAt:true,projectCount:true,contractVersion:true,sourceKind:true}}),
    prisma.qboxReaderEvent.findMany({where:{companyCode,observedAt:{gte:new Date(Date.now()-30*86400000)}},orderBy:[{observedAt:'desc'},{receivedAt:'desc'},{id:'desc'}],take:100}),
    prisma.qboxReaderEvent.findFirst({where:{companyCode},orderBy:{receivedAt:'desc'},select:{receivedAt:true}}),
+   prisma.qboxReaderConfig.findUnique({where:{companyCode}}),
   ]);
-  const phaseOrder:Record<string,number>={started:0,read_ok:1,read_failed:2,upload_failed:2,success:2};
+  const phaseOrder:Record<string,number>={started:0,read_ok:1,configuration_failed:2,read_failed:2,upload_failed:2,success:2};
   events.sort((a,b)=>b.observedAt.getTime()-a.observedAt.getTime() || (a.runId===b.runId ? phaseOrder[b.phase]-phaseOrder[a.phase] : b.receivedAt.getTime()-a.receivedAt.getTime()));
   return {state:connectionState(events[0]??null,contact?.receivedAt??null),lastContactAt:contact?.receivedAt??null,lastImport,events,
-   expectedIntervalMinutes:15,columnSelectionEnabled:false,columns,exportSchemaVersion:3};
+   expectedIntervalMinutes:15,columnSelectionEnabled:true,configuration,extraColumns,columns,exportSchemaVersion:3};
  }
 }

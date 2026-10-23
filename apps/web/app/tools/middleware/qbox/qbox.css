@@ -15,3 +15,8 @@
 .qbox-monitor summary {cursor:pointer;font-weight:600;padding:10px 0}
 .qbox-monitor pre {white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:1000px){.qbox-metrics{grid-template-columns:1fr}}
+
+.qbox-column-group {border:1px solid #e2e8f0;border-radius:8px;margin:16px 0;padding:16px}
+.qbox-column-group label {display:flex;align-items:flex-start;gap:10px;padding:8px 0}
+.qbox-column-group input {margin-top:4px}
+.qbox-column-group code {font-size:.85em;color:#475569}
