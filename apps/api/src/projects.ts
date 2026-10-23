@@ -1,4 +1,4 @@
-import {importVisibilityMessages} from './integrations/project-changes';
+import {importVisibilityMessages,displayProjectUpdate} from './integrations/project-changes';
 import {deleteManualProject} from "./manual-projects";
 import { currentProjectListWhere, recentClosedProjectWhere } from "./project-visibility";
 import { importReaderProjects } from "./integrations/reader-import";
@@ -61,11 +61,12 @@ export class ProjectsController {
   }
   @Get("projects/updates")
   async updates(@Param("companyCode") companyCode:string) {
-    return prisma.projectSourceEvent.findMany({
+    const events = await prisma.projectSourceEvent.findMany({
       where:{project:{company:{code:companyCode}},message:{notIn:importVisibilityMessages},observedAt:{gte:new Date(Date.now()-30*86400000)}},
       include:{project:{select:{name:true,externalId:true}}},
       orderBy:[{observedAt:"desc"},{id:"asc"}],take:200,
     });
+    return events.map(event=>({...event,message:displayProjectUpdate(event.message)}));
   }
   @Get("projects/recent-closed")
   async recentClosed(@Param("companyCode") companyCode:string) {

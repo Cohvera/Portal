@@ -240,3 +240,10 @@ test('newly visible projects are baselines and returning projects retain real st
   await ingest([parent,inExecution]);assert.equal(events.length,1);
  }finally{prisma.$transaction=original;}
 });
+
+test('lost offer 1809629 remains under its project even when selection only includes status 07',()=>{
+ const lost={...child,number:'1809629',status_code:'14',status_label:'14 - Verloren',revision_closed:'1',out_of_wip:'1'};
+ const parsed=parseReaderImport('WARCO',{...lifecycleBatch([parent,lost]),selection:{statusCodes:['07'],outOfWip:'off'},config_revision:1});
+ assert.equal(parsed.projects[0].documents[0].number,'1809629');
+ assert.equal(parsed.projects[0].documents[0].statusCode,'14');
+});
