@@ -138,8 +138,9 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
       });
       if(recordChanges){
         const old = oldByNumber.get(p.number);
-        const messages = old ? projectChanges(old,source) : ["Nieuw hoofdproject ontvangen"];
-        if(old?.sourceOutOfSelectionAt) messages.unshift("Hoofdproject opnieuw ontvangen");
+        // First receipt is a per-project baseline, not evidence of creation in Plenion.
+        // Returning projects still retain their baseline so actual source changes are reported.
+        const messages = old ? projectChanges(old,source) : [];
         if(messages.length) await tx.projectSourceEvent.createMany({data:messages.map(message=>({projectId:saved.id,observedAt:parsed.observed,message}))});
       }
       oldByNumber.delete(p.number);
@@ -153,11 +154,6 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
           data:{sourceParentRecordId:p.id},
         });
       }
-    }
-    const currentChildren = new Set(parsed.projects.flatMap(p=>p.documents.map(d=>d.sourceId)));
-    if(recordChanges) for(const old of oldByNumber.values()) {
-      if(!currentChildren.has(old.sourceRecordId || "") && old.sourceSeenAt?.getTime()===previous.sourceObservedAt.getTime())
-        await tx.projectSourceEvent.create({data:{projectId:old.id,observedAt:parsed.observed,message:parsed.selection?"Hoofdproject niet meer in readerselectie; afsluiting niet bevestigd":"Hoofdproject niet meer aangeleverd; afsluiting niet bevestigd"}});
     }
     // Record only transitions from the previous accepted selection. Do not date
     // already historical records as newly closed when this feature is deployed.

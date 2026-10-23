@@ -214,3 +214,29 @@ test('import rejects stale selection and old readers before modifying projects; 
   await importReaderProjects('WARCO',{...body,selection,config_revision:3});assert.equal(written,true);
  }finally{prisma.$transaction=original;}
 });
+
+test('newly visible projects are baselines and returning projects retain real status changes',async()=>{
+ const {prisma}=await import('@cohvera/database');const {importReaderProjects}=await import('./reader-import');
+ const original=prisma.$transaction;let previous:any=null,selection:any={statusCodes:['07'],outOfWip:'any'};
+ const stored=new Map<string,any>(),events:any[]=[];let tick=0;const now=Date.now();
+ const offer={...parent,source_id:'888',number:'1888888',status_code:'02',status_label:'02 - Offerte'};
+ try{
+  (prisma as any).$transaction=async(run:any)=>run({
+   $executeRaw:async()=>1,company:{findUnique:async()=>({id:'warco-id',isActive:true})},
+   qboxReaderConfig:{findUnique:async()=>({projectFilter:selection,revision:1})},
+   qboxImport:{findUnique:async()=>previous,upsert:async(args:any)=>{previous=args.update;}},
+   project:{findMany:async()=>[...stored.values()],upsert:async(args:any)=>{const number=args.where.companyId_externalSource_externalId.externalId;const value={...(stored.get(number)||args.create),...args.update,id:number};stored.set(number,value);return value;},
+    updateMany:async(args:any)=>{if(args.data.sourceOutOfSelectionAt)for(const p of stored.values())if(p.sourceSeenAt.getTime()===args.where.sourceSeenAt.getTime())p.sourceOutOfSelectionAt=args.data.sourceOutOfSelectionAt;return {count:0};}},
+   projectSourceEvent:{createMany:async(args:any)=>events.push(...args.data),create:async(args:any)=>events.push(args.data)},
+  });
+  const ingest=(rows:any[])=>importReaderProjects('WARCO',{...lifecycleBatch(rows),selection,config_revision:1,fetched_at:new Date(now-60000+(tick++)*1000).toISOString()});
+  await ingest([parent]);selection=null;await ingest([parent,offer]);assert.equal(events.length,0);
+  selection={statusCodes:['07'],outOfWip:'any'};await ingest([parent]);assert.ok(stored.get(offer.number).sourceOutOfSelectionAt);assert.equal(events.length,0);
+  selection=null;await ingest([parent,offer]);assert.equal(events.length,0);
+  selection={statusCodes:['07'],outOfWip:'any'};await ingest([parent]);
+  const inExecution={...offer,status_code:'07',status_label:'07 - In Uitvoering'};
+  await ingest([parent,inExecution]);assert.equal(events.length,1);
+  assert.equal(events[0].message,'Projectstatus: 02 - Offerte → 07 - In Uitvoering');
+  await ingest([parent,inExecution]);assert.equal(events.length,1);
+ }finally{prisma.$transaction=original;}
+});

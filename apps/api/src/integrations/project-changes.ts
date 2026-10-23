@@ -1,3 +1,10 @@
+// Legacy receipt/selection notices describe Portal visibility, not changes in Plenion.
+export const importVisibilityMessages = [
+ "Nieuw hoofdproject ontvangen",
+ "Hoofdproject opnieuw ontvangen",
+ "Hoofdproject niet meer in readerselectie; afsluiting niet bevestigd",
+ "Hoofdproject niet meer aangeleverd; afsluiting niet bevestigd",
+];
 type Document = {sourceId:string;number:string;name:string;statusLabel:string;closed:boolean;dates?:unknown};
 type Snapshot = {sourceStatusLabel:string|null;sourceIsClosed:boolean|null;sourceDocuments?:unknown;sourceDates?:unknown};
 function datesKey(value:unknown) {

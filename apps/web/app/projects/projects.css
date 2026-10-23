@@ -48,3 +48,8 @@
 .projects-recent-closed .projects-table-scroll { margin-top: 1rem; }
 
 .projects-export-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.projects-middleware-link{display:inline-flex;align-items:center;justify-content:center;gap:12px;padding:12px 16px;min-height:44px;box-sizing:border-box;border:1px solid #dce4ef;border-radius:12px;background:#fff;color:#3447b6;font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap}
+.projects-middleware-link:hover{background:#f4f6fb;border-color:#b6c3d8}
+.projects-middleware-link:focus-visible{outline:3px solid #8195f2;outline-offset:3px}
+@media(max-width:600px){.projects-middleware-link{white-space:normal}}

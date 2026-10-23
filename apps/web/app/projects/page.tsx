@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   useProjects,
@@ -132,6 +133,7 @@ export default function ProjectsPage() {
             Een eenvoudig overzicht van wat er loopt en wie het opvolgt.
           </p>
         </div>
+        {can("projects.read") && <Link className="projects-middleware-link" href="/tools/middleware/qbox">Koppeling & synchronisatie <span aria-hidden="true">→</span></Link>}
       </header>
       {companyCode === "QHOME" && writable && <PlenionImport key={companyCode} companyCode={companyCode} onImported={refresh} />}
       {plenion?.connected && (
