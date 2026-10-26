@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import type {Project} from './projects';
-import {operationsSummary,projectInWarranty,projectStatusIssue,projectStatusIssues} from './operations';
+import {operationsSummary,projectInWarranty,projectStatusIssue,projectStatusIssues,statusIssueGroups} from './operations';
 const project=(patch:Partial<Project>={}):Project=>({id:'1',name:'Werf',customer:'',owner:'',status:'Actief',statusColor:'#123',dueDate:null,tasks:[],externalSource:'PLENION',sourceStatusCode:'07',sourceIsActive:true,sourceIsClosed:false,...patch});
 test('warranty requires invoiced Plenion status and confirmed Uit WIP off',()=>{
  assert.equal(projectInWarranty(project({sourceStatusCode:'09',sourceIsActive:false})),true);
@@ -48,4 +48,16 @@ test('offers are checked separately, invoices are excluded and projects counted 
  const multiple=project({sourceStatusCode:'07',sourceIsClosed:true,sourceDocuments:[doc('04',false)]});
  assert.equal(projectStatusIssues(multiple).length,3);
  assert.equal(operationsSummary([multiple],'2026-10-23').statusIssues.length,1);
+});
+
+test('problem groups count each project once and keep distinct wrong-status directions',()=>{
+ const offer={sourceId:'1',number:'1809629',name:'Ventilatie',description:'',statusCode:'04',statusLabel:'',closed:false,documentType:'601',versionNumber:'1',revisionClosed:false};
+ const offers=project({id:'offers',sourceDocuments:[offer,{...offer,sourceId:'2',number:'1809630'}]});
+ const map=project({id:'map',sourceStatusCode:'14',sourceIsClosed:true});
+ const groups=statusIssueGroups([offers,map,project({id:'valid'})]);
+ assert.deepEqual(groups.find(g=>g.kind==='offer-wrong-status')!.projects.map(p=>p.id),['offers']);
+ assert.deepEqual(groups.find(g=>g.kind==='map-wrong-status')!.projects.map(p=>p.id),['map']);
+ assert.deepEqual(groups.find(g=>g.kind==='lost-not-closed')!.projects.map(p=>p.id),['offers']);
+ assert.equal(groups.find(g=>g.kind==='execution-closed')!.projects.length,0);
+ assert.equal(projectStatusIssues(offers).filter(issue=>issue.kind==='offer-wrong-status').length,2);
 });
