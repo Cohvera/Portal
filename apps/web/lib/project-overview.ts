@@ -9,10 +9,10 @@ export type OverviewProject = {
 };
 export type ProjectFilters = {query: string; status: string; owner: string; source: string; scope?: string};
 export function projectStatus(p: OverviewProject) {
-  return p.externalSource === 'PLENION' ? p.sourceStatusLabel || p.status : p.status;
+  return ['PLENION', 'TEAMLEADER'].includes(p.externalSource || '') ? p.sourceStatusLabel || p.status : p.status;
 }
 export function projectScope(p: OverviewProject): 'open' | 'closed' | 'unknown' {
-  if (p.externalSource === 'PLENION') return p.sourceIsClosed === true ? 'closed' : p.sourceIsClosed === false ? 'open' : 'unknown';
+  if (['PLENION', 'TEAMLEADER'].includes(p.externalSource || '')) return p.sourceIsClosed === true ? 'closed' : p.sourceIsClosed === false ? 'open' : 'unknown';
   return p.status === 'Afgerond' ? 'closed' : 'open';
 }
 export function filterProjects<T extends OverviewProject>(projects: T[], filters: ProjectFilters): T[] {
@@ -21,7 +21,7 @@ export function filterProjects<T extends OverviewProject>(projects: T[], filters
     (!filters.scope || (filters.scope === "active" ? projectInExecution(p) : projectScope(p) === filters.scope)) &&
     (!filters.status || projectStatus(p) === filters.status) &&
     (!filters.owner || (filters.owner === '__unassigned__' ? !p.owner.trim() : p.owner === filters.owner)) &&
-    (!filters.source || (filters.source === 'PLENION' ? p.externalSource === 'PLENION' : !p.externalSource)) &&
+    (!filters.source || (filters.source === 'PORTAL' ? !p.externalSource : p.externalSource === filters.source)) &&
     (!query || [p.name,p.customer,p.owner,p.externalId || ''].some(value => value.toLocaleLowerCase('nl-BE').includes(query)))
   ).sort((a,b) => a.name.localeCompare(b.name,'nl-BE',{numeric:true}));
 }
@@ -30,6 +30,7 @@ export function projectInExecution(p:OverviewProject) {
   return p.externalSource === "PLENION" ? p.sourceIsActive === true && p.sourceIsClosed !== true : p.status === "Actief";
 }
 export function projectExplanation(p:OverviewProject) {
+  if(p.externalSource === "TEAMLEADER") return "Status beheerd in Teamleader";
   if(p.externalSource !== "PLENION") return p.status === "Afgerond" ? "Afgerond in Portal" : "Status beheerd in Portal";
   const status=projectStatus(p).toLocaleLowerCase("nl-BE");
   const closed=p.sourceIsClosed;

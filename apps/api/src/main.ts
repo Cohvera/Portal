@@ -1,3 +1,5 @@
+import {TeamleaderDirectController, TeamleaderScheduler} from "./integrations/teamleader-direct";
+import {TeamleaderImportController} from "./integrations/teamleader";
 import {QboxMonitorController} from "./integrations/qbox-monitor";
 import "reflect-metadata";
 import { TvController } from "./tv";
@@ -402,8 +404,9 @@ class AppController {
 }
 
 @Module({
+  providers: [TeamleaderScheduler],
   controllers: [
-    QboxImportController, PlenionStatusController, QboxMonitorController, TvController,
+    TeamleaderDirectController, TeamleaderImportController, QboxImportController, PlenionStatusController, QboxMonitorController, TvController,
     AuthController,
     AccountsController,
     InspectionsController,
@@ -431,7 +434,7 @@ export async function configuredApp() {
     res.setHeader("Cache-Control", "no-store");
     if (publicAuthPath(req.path.replace(/\/$/, ""))) return next();
     // Bearer requests are verified independently in the guard, never as a user session.
-    if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined || req.headers["x-qbox-key"] !== undefined || req.path === "/integrations/qbox/plenion/projects") return next();
+    if (req.headers["x-teamleader-key"] !== undefined || req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined || req.headers["x-qbox-key"] !== undefined || req.path === "/integrations/qbox/plenion/projects") return next();
     void requestContext(req)
       .then((ctx) => authContext.run(ctx, () => next()))
       .catch(() =>

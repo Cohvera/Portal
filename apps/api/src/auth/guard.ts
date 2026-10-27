@@ -1,3 +1,4 @@
+import {TeamleaderImportController, verifyTeamleaderKey} from "../integrations/teamleader";
 import {
   CanActivate,
   ExecutionContext,
@@ -26,6 +27,12 @@ export class PortalGuard implements CanActivate {
     const req = exec.switchToHttp().getRequest<Request>();
     const path = req.path.replace(/\/$/, "") || "/";
     if (publicAuthPath(path)) return true;
+    if (req.headers["x-teamleader-key"] !== undefined || exec.getClass() === TeamleaderImportController) {
+      if (req.headers.authorization !== undefined || req.headers["x-qbox-key"] !== undefined || req.headers["x-warehouse-key"] !== undefined) throw new UnauthorizedException("Gebruik één authenticatiemethode.");
+      verifyTeamleaderKey(req.headers["x-teamleader-key"]);
+      if(exec.getClass() !== TeamleaderImportController || req.method !== "POST" || !req.is("application/json")) throw new ForbiddenException("Deze sleutel is alleen voor Teamleader-projectimport.");
+      return true;
+    }
     if (req.headers["x-qbox-key"] !== undefined || exec.getClass() === QboxImportController) {
       if (req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined)
         throw new UnauthorizedException("Gebruik alleen de Q-box sleutel.");

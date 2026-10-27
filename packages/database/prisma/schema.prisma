@@ -365,3 +365,34 @@ model QboxReaderConfig {
   readerVersion String?
   updatedAt DateTime @updatedAt
 }
+
+// Direct Teamleader OAuth connection. Separate from every Q-box configuration.
+model TeamleaderConnection {
+  companyCode String @id
+  mode String
+  accessToken String?
+  refreshToken String?
+  expiresAt DateTime?
+  stateHash String? @unique
+  stateActorId String?
+  stateExpiresAt DateTime?
+  connectedAt DateTime?
+  nextSyncAt DateTime?
+  lastAttemptAt DateTime?
+  lastSuccessAt DateTime?
+  lastError String?
+  projectCount Int @default(0)
+  leaseId String?
+  leaseUntil DateTime?
+  updatedAt DateTime @updatedAt
+}
+
+model TeamleaderSyncRun {
+  id String @id @default(cuid())
+  companyCode String
+  startedAt DateTime
+  finishedAt DateTime @default(now())
+  projectCount Int?
+  error String?
+  @@index([companyCode, finishedAt])
+}

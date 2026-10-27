@@ -133,7 +133,7 @@ export default function ProjectsPage() {
             Een eenvoudig overzicht van wat er loopt en wie het opvolgt.
           </p>
         </div>
-        {can("projects.read") && <Link className="projects-middleware-link" href="/tools/middleware/qbox">Koppeling & synchronisatie <span aria-hidden="true">→</span></Link>}
+        {can("projects.read") && <Link className="projects-middleware-link" href={companyCode === "QHOME" ? "/tools/middleware/teamleader" : "/tools/middleware/qbox"}>Koppeling & synchronisatie <span aria-hidden="true">→</span></Link>}
       </header>
       {companyCode === "QHOME" && writable && <PlenionImport key={companyCode} companyCode={companyCode} onImported={refresh} />}
       {plenion?.connected && (
@@ -198,7 +198,7 @@ export default function ProjectsPage() {
               </label>
               <label>Bron
                 <select value={filters.source} onChange={event => setFilters(current => ({...current,source:event.target.value}))}>
-                  <option value="">Alle bronnen</option><option value="PLENION">Plenion</option><option value="PORTAL">Handmatig in portaal</option>
+                  <option value="">Alle bronnen</option><option value="PLENION">Plenion</option><option value="TEAMLEADER">Teamleader</option><option value="PORTAL">Handmatig in portaal</option>
                 </select>
               </label>
             </div>
@@ -222,7 +222,7 @@ export default function ProjectsPage() {
                       <td>{projectScope(p) === "unknown" ? <span className="muted">Nog niet bevestigd</span> : <label className="projects-closed-flag"><input type="checkbox" checked={projectScope(p) === "closed"} disabled aria-label={`${p.name}: afgesloten volgens ${p.externalSource === "PLENION" ? "Plenion" : "portaalstatus"}`} />{projectScope(p) === "closed" ? "Ja" : "Nee"}</label>}</td>
                       <td>{(p.externalSource === "PLENION" ? p.sourceDates?.deadline : p.dueDate)?.slice(0,10) || "Niet ingevuld"}</td>
                       <td><span className={!p.owner.trim() ? "muted" : ""}>{p.owner || "Nog toe te wijzen"}</span></td>
-                      <td><span className="projects-source-badge">{p.externalSource === "PLENION" ? "Plenion" : "Portaal"}</span>{p.externalId && <span className="projects-customer">{p.externalId}</span>}</td>
+                      <td><span className="projects-source-badge">{p.externalSource === "PLENION" ? "Plenion" : p.externalSource === "TEAMLEADER" ? "Teamleader" : "Portaal"}</span>{p.externalId && <span className="projects-customer">{p.externalSource === "TEAMLEADER" ? p.sourceExtraFields?.reference || p.externalId : p.externalId}</span>}</td>
                       <td><button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button>
                         {writable && p.externalSource == null && p.externalId == null && p.sourceRecordId == null && <button className="project-edit" disabled={busy || p.tasks.length>0} title={p.tasks.length ? "Verplaats of verwijder eerst de gekoppelde taken" : "Handmatig project verwijderen"} aria-label={`${p.name} verwijderen`} onClick={()=>removeProject(p)}>Verwijderen</button>}
                       </td>
@@ -279,6 +279,7 @@ export default function ProjectsPage() {
                 placeholder="Bijvoorbeeld: Renovatie kantoor"
               />
             </label>
+            {editing?.externalSource === "TEAMLEADER" && <p className="muted">Projectnaam, status en deadline komen bij iedere synchronisatie opnieuw uit Teamleader. De verantwoordelijke en taken worden in het portaal beheerd.</p>}
             {editing?.externalSource === "PLENION" && <p className="muted">Plenion-status: {projectStatus(editing)} · Administratief afgesloten: {projectScope(editing) === "unknown" ? "onbekend" : projectScope(editing) === "closed" ? "ja" : "nee"}. Deze brongegevens worden in Plenion beheerd; de portaalstatus hieronder staat daar los van.</p>}
             <div className="form-grid">
               <label>
