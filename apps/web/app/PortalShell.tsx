@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useContext,
@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {ALL_COMPANIES} from "../lib/project-companies";
 import { coefHubs } from "../lib/coef";
 type Company = { id: string; code: string; name: string };
 type Identity = {
@@ -34,6 +35,7 @@ const CompanyContext = createContext({
 });
 export const useCompany = () => useContext(CompanyContext);
 export default function PortalShell({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname(),
     isLogin = pathname === "/login";
   const [identity, setIdentity] = useState<Identity | null>(null),
@@ -59,9 +61,9 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         setIdentity(next);
         setError("");
         setCompanyCode((current) =>
-          next.companies.some((c) => c.code === current)
+          (current === ALL_COMPANIES && next.companies.length > 0) || next.companies.some((c) => c.code === current)
             ? current
-            : next.companies.find(
+            : localStorage.getItem("cohvera.companyCode") === ALL_COMPANIES && next.companies.length > 0 ? ALL_COMPANIES : next.companies.find(
                 (c) => c.code === localStorage.getItem("cohvera.companyCode"),
               )?.code ||
               next.companies[0]?.code ||
@@ -120,15 +122,17 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         )}
       </main>
     );
-  const can = (permission: string, code = companyCode) => {
+  const can = (permission: string, code = companyCode): boolean => {
+    if(code === ALL_COMPANIES) return permission === "projects.read" && identity.companies.some(c=>can(permission,c.code));
     const access = identity.businessAccess.find((a) => a.companyCode === code);
     return !!access && (access.businessAdmin || access.permissions.includes(permission) ||
       (identity.roles.includes("Portal.Admin") && ["projects.read", "projects.create", "projects.manage"].includes(permission)));
   };
   const selectCompany = (code: string) => {
-    if (!identity.companies.some(c => c.code === code)) return;
+    if (code !== ALL_COMPANIES && !identity.companies.some(c => c.code === code)) return;
     setCompanyCode(code);
     localStorage.setItem("cohvera.companyCode", code);
+    if(code === ALL_COMPANIES){if(pathname !== "/projects" && pathname !== "/hubs/operations")router.push("/projects");return;}
     void fetch(`/api/companies/${encodeURIComponent(code)}/select`, {method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
   };
   const links = [
@@ -200,6 +204,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
             disabled={!identity.companies.length}
             onChange={(e) => selectCompany(e.target.value)}
           >
+            {identity.companies.length > 0 && <option value={ALL_COMPANIES}>Alle bedrijven</option>}
             {identity.companies.length ? (
               identity.companies.map((c) => (
                 <option key={c.id} value={c.code}>
@@ -246,7 +251,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
         <div className="portal-content">
-          {denied ? (
+          {companyCode === ALL_COMPANIES && !["/projects", "/hubs/operations"].includes(pathname) && !pathname.startsWith("/admin/") ? <main className="main"><h1>Selecteer een bedrijf</h1><p>Alle bedrijven is beschikbaar bij Projecten en Operations Hub. Kies voor dit onderdeel een afzonderlijk bedrijf.</p><Link href="/projects">Alle projecten bekijken</Link></main> : denied ? (
             <main className="main">
               <h1>Geen toegang</h1>
               <p>Je rol geeft geen toegang tot dit onderdeel.</p>

@@ -1,4 +1,5 @@
 "use client";
+import {ALL_COMPANIES} from "../../lib/project-companies";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
@@ -18,7 +19,7 @@ import { useCompany } from "../PortalShell";
 
 export default function ProjectsPage() {
   const { projects, loading, error, refresh, url, companyCode } = useProjects();
-  const { companies, can, displayName } = useCompany();
+  const { companies, can, displayName, selectCompany } = useCompany();
   const writable = can("projects.manage");
   const dialog = useRef<HTMLDialogElement>(null);
   const [formVersion, setFormVersion] = useState(0);
@@ -38,7 +39,7 @@ export default function ProjectsPage() {
   const [plenion, setPlenion] = useState<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number} | null>(null);
   useEffect(() => {
     setPlenion(null);
-    if (!companyCode) return;
+    if (!companyCode || companyCode === ALL_COMPANIES) return;
     const controller = new AbortController();
     request<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number}>(`/api/companies/${encodeURIComponent(companyCode)}/integrations/plenion/status`, {signal:controller.signal})
       .then(setPlenion).catch(() => {});
@@ -126,14 +127,14 @@ export default function ProjectsPage() {
         <div>
           <p className="eyebrow">
             Van plan naar uitvoering ·{" "}
-            {companies.find((c) => c.code === companyCode)?.name || companyCode}
+            {companyCode === ALL_COMPANIES ? "Alle bedrijven" : companies.find((c) => c.code === companyCode)?.name || companyCode}
           </p>
           <h1>Projecten</h1>
           <p className="muted">
             Een eenvoudig overzicht van wat er loopt en wie het opvolgt.
           </p>
         </div>
-        {can("projects.read") && <Link className="projects-middleware-link" href={companyCode === "QHOME" ? "/tools/middleware/teamleader" : "/tools/middleware/qbox"}>Koppeling & synchronisatie <span aria-hidden="true">→</span></Link>}
+        {companyCode !== ALL_COMPANIES && can("projects.read") && <Link className="projects-middleware-link" href={companyCode === "QHOME" ? "/tools/middleware/teamleader" : "/tools/middleware/qbox"}>Koppeling & synchronisatie <span aria-hidden="true">→</span></Link>}
       </header>
       {companyCode === "QHOME" && writable && <PlenionImport key={companyCode} companyCode={companyCode} onImported={refresh} />}
       {plenion?.connected && (
@@ -217,13 +218,13 @@ export default function ProjectsPage() {
                   <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Administratief afgesloten</th><th scope="col">Deadline</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
                   <tbody>{filteredProjects.map(p => (
                     <tr key={p.id}>
-                      <td><strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}{p.externalSource === "PLENION" && <PlenionProjectDetails project={p} />}</td>
+                      <td>{companyCode === ALL_COMPANIES && <span className="projects-source-badge">{p.companyName}</span>}<strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}{p.externalSource === "PLENION" && <PlenionProjectDetails project={p} />}</td>
                       <td><span className="project-status"><span style={{backgroundColor:p.externalSource === "PLENION" ? (projectScope(p) === "closed" ? "#16834b" : "#2563eb") : p.statusColor || projectStatuses[p.status]}} />{projectStatus(p)}</span>{p.externalSource === "PLENION" && <span className="projects-customer">{projectExplanation(p)}</span>}</td>
                       <td>{projectScope(p) === "unknown" ? <span className="muted">Nog niet bevestigd</span> : <label className="projects-closed-flag"><input type="checkbox" checked={projectScope(p) === "closed"} disabled aria-label={`${p.name}: afgesloten volgens ${p.externalSource === "PLENION" ? "Plenion" : "portaalstatus"}`} />{projectScope(p) === "closed" ? "Ja" : "Nee"}</label>}</td>
                       <td>{(p.externalSource === "PLENION" ? p.sourceDates?.deadline : p.dueDate)?.slice(0,10) || "Niet ingevuld"}</td>
                       <td><span className={!p.owner.trim() ? "muted" : ""}>{p.owner || "Nog toe te wijzen"}</span></td>
                       <td><span className="projects-source-badge">{p.externalSource === "PLENION" ? "Plenion" : p.externalSource === "TEAMLEADER" ? "Teamleader" : "Portaal"}</span>{p.externalId && <span className="projects-customer">{p.externalSource === "TEAMLEADER" ? p.sourceExtraFields?.reference || p.externalId : p.externalId}</span>}</td>
-                      <td><button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button>
+                      <td>{companyCode === ALL_COMPANIES ? <button className="project-edit" onClick={()=>selectCompany(p.companyCode!)}>Open bedrijf</button> : <button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button>}
                         {writable && p.externalSource == null && p.externalId == null && p.sourceRecordId == null && <button className="project-edit" disabled={busy || p.tasks.length>0} title={p.tasks.length ? "Verplaats of verwijder eerst de gekoppelde taken" : "Handmatig project verwijderen"} aria-label={`${p.name} verwijderen`} onClick={()=>removeProject(p)}>Verwijderen</button>}
                       </td>
                     </tr>
@@ -252,7 +253,7 @@ export default function ProjectsPage() {
           <header className="section-heading">
             <div>
               <p className="eyebrow">
-                {companies.find((c) => c.code === companyCode)?.name || companyCode}
+                {companyCode === ALL_COMPANIES ? "Alle bedrijven" : companies.find((c) => c.code === companyCode)?.name || companyCode}
               </p>
               <h2 id="project-dialog-title">
                 Project bewerken

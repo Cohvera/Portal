@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import {projectCompanies,loadCompanyRecords} from "./project-companies";
 import { useCompany } from "../app/PortalShell";
 export type Task = {id: string; projectId: string; title: string; description: string; assignee: string; priority: string; status: string; dueDate: string | null};
 export type SourceDates = Record<string,string|null>;
 export type PlenionDocument = {extraFields?:Record<string,string|null>;dates?:SourceDates;sourceId:string; number:string; name:string; description:string; statusCode:string; statusLabel:string; documentType:string; versionNumber:string; revisionClosed:boolean; closed:boolean};
-export type Project = {sourceExtraFields?:Record<string,string|null>|null;sourceStatusCode?:string|null;sourceDates?:SourceDates|null;sourceDocuments?: PlenionDocument[] | null;sourceDescription?: string | null; sourcePlannedAt?: string | null; sourceSeenAt?: string | null; sourceRecordId?: string | null; sourceStatusLabel?: string | null; sourceIsClosed?: boolean | null; sourceIsActive?: boolean | null; externalSource?: string | null; externalId?: string | null; id: string; name: string; customer: string; owner: string; status: string; statusColor: string; dueDate: string | null; tasks: Task[]};
+export type Project = {companyCode?:string;companyName?:string;sourceExtraFields?:Record<string,string|null>|null;sourceStatusCode?:string|null;sourceDates?:SourceDates|null;sourceDocuments?: PlenionDocument[] | null;sourceDescription?: string | null; sourcePlannedAt?: string | null; sourceSeenAt?: string | null; sourceRecordId?: string | null; sourceStatusLabel?: string | null; sourceIsClosed?: boolean | null; sourceIsActive?: boolean | null; externalSource?: string | null; externalId?: string | null; id: string; name: string; customer: string; owner: string; status: string; statusColor: string; dueDate: string | null; tasks: Task[]};
 export const projectStatuses: Record<string,string> = {Gepland:"#64748b",Actief:"#2563eb",Gepauzeerd:"#d97706",Afgerond:"#16834b"};
 export const statuses: Record<string,string> = {TODO:"Te doen",IN_PROGRESS:"Bezig",BLOCKED:"Geblokkeerd",DONE:"Klaar"};
 export const priorities: Record<string,string> = {LOW:"Laag",NORMAL:"Normaal",HIGH:"Hoog"};
@@ -18,20 +19,22 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return data;
 }
 export function useProjects() {
-  const {companyCode} = useCompany();
+  const {companyCode,companies,can} = useCompany();
+  const companyKey=JSON.stringify(projectCompanies(companies,companyCode,code=>can("projects.read",code)));
+  const load=useCallback((signal?:AbortSignal)=>loadCompanyRecords<Project>(JSON.parse(companyKey),company=>request<Project[]>(`/api/companies/${encodeURIComponent(company.code)}/projects`,{signal})),[companyKey]);
   const [result,setResult] = useState<{code:string; projects:Project[]}>({code:"",projects:[]});
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);
   const url = `/api/companies/${encodeURIComponent(companyCode)}/projects`;
   const refresh = useCallback(async () => {
-    const projects = await request<Project[]>(url);
-    setResult({code:companyCode,projects});
-  },[url,companyCode]);
+    const projects = await load();
+    setResult({code:companyKey,projects});
+  },[load,companyKey]);
   useEffect(()=>{
     const controller = new AbortController();
     setLoading(true);setError("");
-    request<Project[]>(url,{signal:controller.signal}).then(projects=>setResult({code:companyCode,projects})).catch(e=>{if(!controller.signal.aborted)setError(e.message);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+    load(controller.signal).then(projects=>setResult({code:companyKey,projects})).catch(e=>{if(!controller.signal.aborted)setError(e.message);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return ()=>controller.abort();
-  },[url,companyCode]);
-  return {projects:result.code===companyCode?result.projects:[],error,setError,loading,refresh,url,companyCode};
+  },[load,companyKey]);
+  return {projects:result.code===companyKey?result.projects:[],error,setError,loading,refresh,url,companyCode};
 }

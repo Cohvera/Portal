@@ -14,17 +14,17 @@ export default function TeamleaderPage(){
  return <Dashboard canManage={can('projects.manage')}/>;
 }
 function Dashboard({canManage}:{canManage:boolean}){
- const [data,setData]=useState<Status|null>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[mode,setMode]=useState<'legacy'|'v2'>('legacy');
+ const [data,setData]=useState<Status|null>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  const base='/api/companies/QHOME/middleware/teamleader';
  const refresh=useCallback(async(signal?:AbortSignal)=>{
-  try{const next=await request<Status>(base,{signal});if(signal?.aborted)return;setData(next);if(next.mode)setMode(next.mode);setError('');}
+  try{const next=await request<Status>(base,{signal});if(signal?.aborted)return;setData(next);setError('');}
   catch(e){if(!signal?.aborted)setError(e instanceof Error?e.message:'Status ophalen mislukt.');}
  },[]);
  useEffect(()=>{const abort=new AbortController();void refresh(abort.signal);const timer=setInterval(()=>void refresh(abort.signal),15000);const result=new URLSearchParams(window.location.search).get('connection');if(result)setMessage(result==='connected'?'Verbonden. De eerste synchronisatie start automatisch.':'Verbinden mislukt. Controleer de instellingen en probeer opnieuw.');return()=>{abort.abort();clearInterval(timer);};},[refresh]);
  async function action(name:'connect'|'sync'|'disconnect'){
   setBusy(true);setMessage('');
   try{
-   const result=await request<{url?:string}>(base+'/'+name,{method:'POST',body:JSON.stringify(name==='connect'?{mode}:{})});
+   const result=await request<{url?:string}>(base+'/'+name,{method:'POST',body:JSON.stringify(name==='connect'?{mode:data?.mode??'legacy'}:{})});
    if(result.url){window.location.assign(result.url);return;}
    setMessage(name==='sync'?'Synchronisatie gestart. Het resultaat verschijnt hieronder.':'Automatische synchronisatie gestopt. Bestaande projecten blijven behouden.');
    await refresh();
@@ -47,8 +47,8 @@ function Dashboard({canManage}:{canManage:boolean}){
    {canManage&&<section className="card"><h2>Teamleader verbinden</h2>
     {!data.configured?<><p>Vul op de Portal-server de Teamleader-clientgegevens en versleutelingssleutel in. Herstart daarna de API.</p><p>Registreer dit callbackadres bij de Teamleader-app:</p><code style={{overflowWrap:'anywhere'}}>{data.callbackUrl}</code></>:<>
      <p>Gebruik een QHOME-gebruiker met toegang tot alle gewenste projecten. Geef de Teamleader-app toestemming om projecten te lezen.</p>
-     <p className="muted">Portal controleert de projectmodule bij Teamleader. Vóór de eerste import wordt een verkeerde keuze automatisch gecorrigeerd.</p>
-     <label>Projectmodule <select value={mode} disabled={busy||!!data.connectedAt} onChange={e=>setMode(e.target.value as 'legacy'|'v2')}><option value="legacy">Klassieke projecten</option><option value="v2">Nieuwe projecten</option></select></label>
+     <p className="muted">Portal herkent de projectmodule automatisch bij Teamleader. Je hoeft hiervoor niets in te stellen.</p>
+     <p>Projectmodule: <strong>{data.lastSuccessAt ? (data.mode==='v2'?'Nieuwe projecten':'Klassieke projecten') : 'Wordt automatisch herkend bij synchronisatie'}</strong></p>
      <div className="qbox-actions" style={{marginTop:'1rem'}}><button className="qbox-action qbox-action-primary" disabled={busy||data.running} onClick={()=>void action('connect')}>{data.connected?'Opnieuw verbinden':'Verbinden met Teamleader'}</button>{data.connected&&<button className="qbox-action qbox-action-secondary" disabled={busy||data.running} onClick={()=>void action('disconnect')}>Verbinding verbreken</button>}</div>
     </>}
    </section>}

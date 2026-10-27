@@ -1,4 +1,5 @@
 export type OverviewProject = {
+  companyName?:string;
   name: string; customer: string; owner: string; status: string;
   sourceDates?: Record<string,string|null>|null;
   dueDate?:string|null;

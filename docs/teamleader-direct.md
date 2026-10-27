@@ -54,7 +54,7 @@ voordat de migratie wordt uitgevoerd. Zonder warehouse-override laat je het twee
 ## Verbinden
 
 1. Selecteer **QHOME → Tools & Middleware → Teamleader**.
-2. Kies **Klassieke projecten** of **Nieuwe projecten**. Portal controleert de module via `accounts.projects-v2-status` en corrigeert de keuze automatisch zolang er nog geen geslaagde import of bestaande Teamleader-projecten zijn.
+2. Je hoeft geen projectmodule te kiezen. Portal herkent deze via `accounts.projects-v2-status` en toont de gebruikte module na de eerste geslaagde synchronisatie.
 3. Klik **Verbinden met Teamleader** en meld je aan als QHOME-gebruiker die alle
    gewenste projecten kan lezen. Keur de projecttoegang goed.
 4. Na terugkeer start de eerste sync binnen ongeveer 30 seconden.
@@ -63,9 +63,8 @@ voordat de migratie wordt uitgevoerd. Zonder warehouse-override laat je het twee
 
 De verbinding beheren vereist `projects.manage`; status bekijken vereist
 `projects.read`, steeds binnen QHOME. De OAuth-aanmelding vervalt na 10 minuten en
-moet door dezelfde ingelogde Portal-gebruiker worden afgerond. De modulekeuze wordt
-na de eerste verbinding vastgezet om dubbele koppelingen na een modulewissel te
-voorkomen. Zo'n wissel vraagt eerst een migratie van project-ID's.
+moet door dezelfde ingelogde Portal-gebruiker worden afgerond. Na een geslaagde import verandert Portal de module niet automatisch, om dubbele
+koppelingen na een modulewissel te voorkomen. Zo'n wissel vraagt eerst een migratie van project-ID's.
 
 ## Werking en herstel
 
