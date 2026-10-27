@@ -62,7 +62,25 @@ test('scheduler is optional and claims a company-specific lease to prevent overl
 });
 test('partial export never imports projects and schedules a retry',async()=>{
  const scheduler=new TeamleaderScheduler(),now=new Date();const record:any={companyCode:'QHOME',mode:'legacy',leaseId:'lease',leaseUntil:new Date(Date.now()+720000),accessToken:sealToken('token'),refreshToken:sealToken('refresh'),expiresAt:new Date(Date.now()+3600000)};
- stub(prisma.teamleaderConnection,'findUniqueOrThrow',async()=>record);let page=0;mock.method(globalThis,'fetch',async()=>++page===1?new Response(JSON.stringify({data:[row()]})):new Response('error',{status:500}));
+ stub(prisma.teamleaderConnection,'findUniqueOrThrow',async()=>record);let page=0;mock.method(globalThis,'fetch',async(url:any)=>String(url).endsWith('/accounts.projects-v2-status')?new Response(JSON.stringify({data:{status:'legacy'}})):++page===1?new Response(JSON.stringify({data:[row()]})):new Response('error',{status:500}));
  let writes=0,result:any;stub(prisma,'$transaction',async(callback:any)=>callback({teamleaderConnection:{updateMany:async({data}:any)=>{result=data;return {count:1};}},teamleaderSyncRun:{create:async()=>{},deleteMany:async()=>{}},project:{upsert:async()=>{writes++;}}}) as any);
  await (scheduler as any).run('lease',now);assert.equal(writes,0);assert.match(result.lastError,/HTTP 500/);assert.equal(result.leaseId,null);assert(result.nextSyncAt>now);
+});
+
+test('first sync corrects legacy to detected v2, but existing projects prevent a silent migration',async()=>{
+ for(const existing of [0,1]) {
+  const scheduler=new TeamleaderScheduler(),now=new Date();
+  const record:any={companyCode:'QHOME',mode:'legacy',leaseId:'lease',leaseUntil:new Date(Date.now()+720000),accessToken:sealToken('token'),refreshToken:sealToken('refresh'),expiresAt:new Date(Date.now()+3600000),lastSuccessAt:null};
+  stub(prisma.teamleaderConnection,'findUniqueOrThrow',async()=>record);
+  stub(prisma.project,'count',async()=>existing);
+  stub(prisma.teamleaderConnection,'updateMany',async({data}:any)=>{Object.assign(record,data);return {count:1};});
+  const paths:string[]=[];
+  mock.method(globalThis,'fetch',async(url:any)=>{paths.push(String(url));if(String(url).endsWith('/accounts.projects-v2-status'))return new Response(JSON.stringify({data:{status:'projects-v2'}}));return new Response('unavailable',{status:503});});
+  let result:any;
+  stub(prisma,'$transaction',async(callback:any)=>callback({teamleaderConnection:{updateMany:async({data}:any)=>{result=data;return {count:1};}},teamleaderSyncRun:{create:async()=>{},deleteMany:async()=>{}}}) as any);
+  await (scheduler as any).run('lease',now);
+  if(existing){assert.equal(record.mode,'legacy');assert.equal(paths.length,1);assert.match(result.lastError,/Migreer/);}
+  else {assert.equal(record.mode,'v2');assert(paths[1].endsWith('/projects-v2/projects.list'));assert.match(result.lastError,/nieuwe projecten/);}
+  mock.restoreAll();while(restorers.length)restorers.pop()!();
+ }
 });

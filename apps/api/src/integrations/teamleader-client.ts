@@ -39,7 +39,9 @@ export async function remoteJson(url:string, init:RequestInit) {
   let response:Response;
   try {response=await fetch(url,{...init,redirect:'error',signal:AbortSignal.timeout(45000)});}
   catch {throw new TeamleaderRemoteError('Teamleader is niet bereikbaar of antwoordt te traag.');}
-  if(!response.ok) throw new TeamleaderRemoteError(response.status===429 ? 'Teamleader-limiet bereikt; de volgende automatische poging volgt over 15 minuten.' : `Teamleader antwoordt HTTP ${response.status}. Controleer de verbinding en projectrechten.`);
+  const path=new URL(url).pathname;
+  const operation=path==='/projects.list'?'klassieke projecten':path==='/projects-v2/projects.list'?'nieuwe projecten':path==='/accounts.projects-v2-status'?'projectmodule controleren':'toegang vernieuwen';
+  if(!response.ok) throw new TeamleaderRemoteError(response.status===429 ? 'Teamleader-limiet bereikt; de volgende automatische poging volgt over 15 minuten.' : `Teamleader antwoordt HTTP ${response.status} bij ${operation}. Controleer de verbinding en projectrechten.`);
   try {return await response.json();} catch {throw new TeamleaderRemoteError('Teamleader gaf een ongeldig antwoord.');}
 }
 export async function exchangeToken(parameters:Record<string,string>) {
@@ -66,4 +68,11 @@ export async function fetchTeamleaderProjects(mode:ProjectMode, post:(endpoint:s
     }
   }
   throw new TeamleaderRemoteError('Onvolledige export; niets geïmporteerd.');
+}
+
+export async function detectProjectMode(post:(endpoint:string,body:unknown)=>Promise<any>):Promise<ProjectMode> {
+  const result=await post('accounts.projects-v2-status',{});
+  if(result?.data?.status==='projects-v2')return 'v2';
+  if(result?.data?.status==='legacy')return 'legacy';
+  throw new TeamleaderRemoteError('Teamleader gaf geen herkenbare projectmodule terug; er is niets geïmporteerd.');
 }

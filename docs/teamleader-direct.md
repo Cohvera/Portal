@@ -54,7 +54,7 @@ voordat de migratie wordt uitgevoerd. Zonder warehouse-override laat je het twee
 ## Verbinden
 
 1. Selecteer **QHOME → Tools & Middleware → Teamleader**.
-2. Kies **Klassieke projecten** of **Nieuwe projecten**, passend bij jullie account.
+2. Kies **Klassieke projecten** of **Nieuwe projecten**. Portal controleert de module via `accounts.projects-v2-status` en corrigeert de keuze automatisch zolang er nog geen geslaagde import of bestaande Teamleader-projecten zijn.
 3. Klik **Verbinden met Teamleader** en meld je aan als QHOME-gebruiker die alle
    gewenste projecten kan lezen. Keur de projecttoegang goed.
 4. Na terugkeer start de eerste sync binnen ongeveer 30 seconden.

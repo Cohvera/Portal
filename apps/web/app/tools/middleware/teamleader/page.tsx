@@ -47,6 +47,7 @@ function Dashboard({canManage}:{canManage:boolean}){
    {canManage&&<section className="card"><h2>Teamleader verbinden</h2>
     {!data.configured?<><p>Vul op de Portal-server de Teamleader-clientgegevens en versleutelingssleutel in. Herstart daarna de API.</p><p>Registreer dit callbackadres bij de Teamleader-app:</p><code style={{overflowWrap:'anywhere'}}>{data.callbackUrl}</code></>:<>
      <p>Gebruik een QHOME-gebruiker met toegang tot alle gewenste projecten. Geef de Teamleader-app toestemming om projecten te lezen.</p>
+     <p className="muted">Portal controleert de projectmodule bij Teamleader. Vóór de eerste import wordt een verkeerde keuze automatisch gecorrigeerd.</p>
      <label>Projectmodule <select value={mode} disabled={busy||!!data.connectedAt} onChange={e=>setMode(e.target.value as 'legacy'|'v2')}><option value="legacy">Klassieke projecten</option><option value="v2">Nieuwe projecten</option></select></label>
      <div className="qbox-actions" style={{marginTop:'1rem'}}><button className="qbox-action qbox-action-primary" disabled={busy||data.running} onClick={()=>void action('connect')}>{data.connected?'Opnieuw verbinden':'Verbinden met Teamleader'}</button>{data.connected&&<button className="qbox-action qbox-action-secondary" disabled={busy||data.running} onClick={()=>void action('disconnect')}>Verbinding verbreken</button>}</div>
     </>}

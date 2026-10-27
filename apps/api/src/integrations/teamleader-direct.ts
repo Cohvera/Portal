@@ -5,7 +5,7 @@ import {prisma} from '@cohvera/database';
 import {context,membership} from '../auth/context';
 import {publicOrigin} from '../auth/config';
 import {importTeamleaderProjects} from './teamleader';
-import {exchangeToken,fetchTeamleaderProjects,openToken,ProjectMode,remoteJson,teamleaderApi,TeamleaderRemoteError,teamleaderSettings} from './teamleader-client';
+import {detectProjectMode,exchangeToken,fetchTeamleaderProjects,openToken,ProjectMode,remoteJson,teamleaderApi,TeamleaderRemoteError,teamleaderSettings} from './teamleader-client';
 const COMPANY='QHOME', INTERVAL=15*60000, LEASE=12*60000;
 const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 const idle=(now:Date)=>({OR:[{leaseUntil:null},{leaseUntil:{lte:now}}]});
@@ -57,6 +57,14 @@ export class TeamleaderScheduler implements OnModuleInit,OnModuleDestroy {
         }
         return remoteJson(teamleaderApi+'/'+endpoint,{method:'POST',headers:{Authorization:'Bearer '+openToken(row.accessToken!), 'Content-Type':'application/json'},body:JSON.stringify(body)});
       };
+      const detectedMode=await detectProjectMode(post);
+      if(detectedMode!==row.mode) {
+        const existing=await prisma.project.count({where:{externalSource:'TEAMLEADER',company:{code:COMPANY}}});
+        if(existing || row.lastSuccessAt)throw new TeamleaderRemoteError('Teamleader gebruikt een andere projectmodule dan de bestaande import. Migreer eerst de projectkoppelingen; er is niets gewijzigd.');
+        const saved=await prisma.teamleaderConnection.updateMany({where:{companyCode:COMPANY,leaseId},data:{mode:detectedMode}});
+        if(!saved.count)throw new Error('lease');
+        row={...row,mode:detectedMode};
+      }
       const snapshot=await fetchTeamleaderProjects(row.mode as ProjectMode,post,started.getTime());
       const current=await prisma.teamleaderConnection.findUniqueOrThrow({where:{companyCode:COMPANY}});
       if(current.leaseId!==leaseId || !current.leaseUntil || current.leaseUntil<=new Date())throw new Error('lease');
