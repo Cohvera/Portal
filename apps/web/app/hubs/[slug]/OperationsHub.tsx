@@ -1,5 +1,6 @@
 "use client";
 import {ALL_COMPANIES} from "../../../lib/project-companies";
+import {OperationsPdfButton} from "./OperationsPdfButton";
 import Link from 'next/link';
 import {useState} from 'react';
 import {useCompany} from '../../PortalShell';
@@ -26,6 +27,9 @@ function OperationsData(){
  const shown=view==='issues'?filteredIssues:view==='warranty'?summary.warranty:view==='overdue'?summary.overdue:view==='unassigned'?summary.unassigned:view==='missing'?summary.missingDeadline:summary.active;
  const latest=projects.map(p=>p.sourceSeenAt).filter((date):date is string=>!!date).sort().at(-1);
  async function reload(){setRefreshing(true);try{await refresh();setError('');}catch(e){setError(e instanceof Error?e.message:'Projecten ophalen mislukt.');}finally{setRefreshing(false);}}
+ const reportTitle=view==='issues'?'Projectstatus controleren':view==='warranty'?'Projecten in garantie':view==='overdue'?'Verstreken deadlines':view==='missing'?'Deadline aan te vullen':view==='unassigned'?'Verantwoordelijke aan te vullen':'Projecten in uitvoering';
+ const reportCompany=companyCode===ALL_COMPANIES?'Alle bedrijven':companies.find(c=>c.code===companyCode)?.name||companyCode;
+ const reportFilter=view==='issues'?(issueFilter==='all'?'Alle problemen':groups.find(g=>g.kind===issueFilter)?.label||issueFilter):reportTitle;
  const dateLabel=(date:string)=>new Intl.DateTimeFormat('nl-BE',{timeZone:'Europe/Brussels',day:'numeric',month:'short',year:'numeric'}).format(new Date(date));
  return <main className="hub-page operations-hub"><div className="hub-page-inner">
  <nav className="hub-breadcrumb" aria-label="Navigatie"><Link href="/">Cohvera Digital Hub</Link><span>/</span><span>Operations</span></nav>
@@ -36,7 +40,7 @@ function OperationsData(){
  <section className="operations-metrics" aria-label="Projectoverzicht">
  {[{key:'active',label:'In uitvoering',count:summary.active.length,detail:'Actieve hoofdprojecten'},{key:'issues',label:'Status controleren',count:summary.statusIssues.length,detail:'Projectmap of offerte wijkt af'},{key:'warranty',label:'In garantie',count:summary.warranty.length,detail:'Gefactureerd · Uit WIP uit'},{key:'overdue',label:'Deadline verstreken',count:summary.overdue.length,detail:'Bij projecten in uitvoering'},{key:'missing',label:'Deadline ontbreekt',count:summary.missingDeadline.length,detail:'Planning nog aan te vullen'},{key:'unassigned',label:'Zonder verantwoordelijke',count:summary.unassigned.length,detail:'Bij projecten in uitvoering'}].map(metric=><button type="button" className={metric.key==='issues'&&metric.count>0?'operations-metric operations-metric-warning':'operations-metric'} key={metric.key} aria-pressed={view===metric.key} onClick={()=>setView(metric.key)}><span>{metric.label}</span><strong>{metric.count}</strong><small>{metric.detail}</small></button>)}
  </section>
- <div className="operations-columns"><section className="card operations-projects"><div className="section-heading"><h2>{view==='issues'?'Projectstatus controleren':view==='warranty'?'Projecten in garantie':view==='overdue'?'Verstreken deadlines':view==='missing'?'Deadline aan te vullen':view==='unassigned'?'Verantwoordelijke aan te vullen':'Projecten in uitvoering'}</h2><span className="muted">{shown.length} projecten</span></div>
+ <div className="operations-columns"><section className="card operations-projects"><div className="section-heading"><h2>{view==='issues'?'Projectstatus controleren':view==='warranty'?'Projecten in garantie':view==='overdue'?'Verstreken deadlines':view==='missing'?'Deadline aan te vullen':view==='unassigned'?'Verantwoordelijke aan te vullen':'Projecten in uitvoering'}</h2><span className="muted">{shown.length} projecten</span><OperationsPdfButton disabled={loading||refreshing||!!error||!shown.length} report={{title:reportTitle,company:reportCompany,filter:reportFilter,projects:shown,...(view==='issues'?{issueFilter}:{})}}/></div>
  {view==='issues'&&<p className="muted">Controle van projectmappen én gekoppelde offertes. Verloren projectmappen horen op 04, verloren offertes op 14, beide met Uit WIP aan. Calculatie, offerte of uitvoering met Uit WIP aan vraagt ook controle. Elke projectmap telt één keer per probleem en kan in meerdere groepen voorkomen. Alleen geïmporteerde projecten tellen mee.</p>}
  {view==='issues'&&<div className="operations-problem-filters" role="group" aria-label="Filter op probleem">
  <button type="button" aria-pressed={issueFilter==='all'} onClick={()=>setIssueFilter('all')}>Alle problemen <span>{summary.statusIssues.length}</span></button>

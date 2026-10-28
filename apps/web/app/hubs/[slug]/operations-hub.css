@@ -8,3 +8,11 @@
 .operations-issue-reason ul{margin:0;padding-left:18px}.operations-issue-reason li+li{margin-top:12px}
 
 .operations-problem-filters{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}.operations-problem-filters button{display:inline-flex;align-items:center;gap:10px;padding:10px 13px;border:1px solid #dce4ef;border-radius:10px;background:#fff;color:#34435b;font:inherit;font-size:13px;text-align:left;cursor:pointer}.operations-problem-filters button span{padding:2px 7px;border-radius:6px;background:#edf0f6;font-weight:700;font-variant-numeric:tabular-nums}.operations-problem-filters button:hover{border-color:#bd861d}.operations-problem-filters button[aria-pressed=true]{border-color:#bd861d;background:#fff3ce;color:#754a08}.operations-problem-filters button[aria-pressed=true] span{background:#f6dfa8}.operations-problem-filters button:focus-visible{outline:3px solid #8195f2;outline-offset:3px}
+
+.operations-pdf-dialog {width:min(1200px,95vw);max-width:95vw;height:90vh;max-height:95vh;border:1px solid #dbe2ed;border-radius:16px;padding:20px;color:#182134;background:white;}
+.operations-pdf-dialog::backdrop {background:rgba(15,23,42,.55);}
+.operations-pdf-dialog[open] {display:flex;flex-direction:column;gap:12px;}
+.operations-pdf-dialog header {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.operations-pdf-dialog header div {display:flex;gap:10px;}
+.operations-pdf-dialog h2,.operations-pdf-dialog p {margin:0;}
+.operations-pdf-dialog iframe {width:100%;flex:1;min-height:200px;border:1px solid #dbe2ed;border-radius:8px;}
