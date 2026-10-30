@@ -32,3 +32,19 @@ test('in execution is separate from administratively open and invoiced',()=>{
  assert.equal(filterProjects([root],{...base,scope:'open'}).length,1);
  assert.equal(filterProjects([{...root,sourceIsActive:true,sourceIsClosed:true}],{...base,scope:'active'}).length,0);
 });
+
+test('year ranges use source dates, include boundaries and never use import dates or project numbers',()=>{
+ const rows=[
+  {...projects[0],name:'Old',sourceDates:{created_date:'2018-10-08T05:57:01.530Z'},createdAt:'2026-10-30T12:00:00Z'},
+  {...projects[0],name:'New',sourceDates:{created_date:'2024-12-31'},createdAt:'2026-10-30T12:00:00Z'},
+  {...projects[0],name:'Teamleader',externalSource:'TEAMLEADER',sourcePlannedAt:'2025-01-01T00:00:00Z'},
+  {...projects[1],name:'Manual',createdAt:'2024-01-01T00:00:00Z'},
+  {...projects[0],name:'Unknown',createdAt:'2026-10-30T12:00:00Z'},
+  {...projects[0],name:'Invalid',sourceDates:{created_date:'0000-00-00'}},
+ ];
+ assert.deepEqual(filterProjects(rows,{...base,yearFrom:'2024',yearTo:'2024'}).map(p=>p.name),['Manual','New']);
+ assert.deepEqual(filterProjects(rows,{...base,yearFrom:'2024',source:'PLENION'}).map(p=>p.name),['New']);
+ assert.equal(filterProjects(rows,{...base,yearTo:'2018'}).length,1);
+ assert.equal(filterProjects(rows,{...base,yearFrom:'2024',includeUnknownYear:true}).length,5);
+ assert.equal(filterProjects(rows,base).length,6);
+});

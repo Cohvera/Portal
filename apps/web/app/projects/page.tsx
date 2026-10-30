@@ -8,7 +8,7 @@ import {
   request,
   type Project,
 } from "../../lib/projects";
-import { filterProjects, projectScope, projectStatus, projectInExecution, projectExplanation, type ProjectFilters } from "../../lib/project-overview";
+import { projectYear, filterProjects, projectScope, projectStatus, projectInExecution, projectExplanation, type ProjectFilters } from "../../lib/project-overview";
 import "./projects.css";
 import { projectsCsv } from "../../lib/project-csv";
 import { ProjectStatusHelp } from "./ProjectStatusHelp";
@@ -34,7 +34,9 @@ export default function ProjectsPage() {
   const resetFilters = () => setFilters({query:"",status:"",owner:"",source:"",scope:"active"});
   const filteredProjects = filterProjects(projects, filters);
   const owners = [...new Set(projects.map(p => p.owner).filter(owner => owner.trim()))].sort((a,b) => a.localeCompare(b,"nl-BE"));
-  const hasFilters = !!(filters.query || filters.status || filters.owner || filters.source || filters.scope !== "active");
+  const hasFilters = !!(filters.query || filters.status || filters.owner || filters.source || filters.yearFrom || filters.yearTo || filters.scope !== "active");
+  const yearOptions = [...new Set(projects.map(projectYear).filter((year):year is number => year!==null))].sort((a,b)=>b-a);
+  const unknownYears = projects.filter(p=>projectYear(p)===null).length;
   const statusOptions = [...new Set(projects.map(projectStatus))].sort((a,b) => a.localeCompare(b,"nl-BE",{numeric:true}));
   const [plenion, setPlenion] = useState<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number} | null>(null);
   useEffect(() => {
@@ -185,6 +187,18 @@ export default function ProjectsPage() {
                 <input type="search" placeholder="Project, klant of projectnummer…" value={filters.query}
                   onChange={event => setFilters(current => ({...current,query:event.target.value}))} />
               </label>
+              <label>Vanaf jaar
+                <select value={filters.yearFrom||""} onChange={event => setFilters(current => ({...current,yearFrom:event.target.value,yearTo:current.yearTo&&event.target.value&&Number(current.yearTo)<Number(event.target.value)?"":current.yearTo}))}>
+                  <option value="">Alle jaren</option>
+                  {yearOptions.map(year=><option key={year} value={year}>{year}</option>)}
+                </select>
+              </label>
+              <label>Tot en met jaar
+                <select value={filters.yearTo||""} onChange={event => setFilters(current => ({...current,yearTo:event.target.value}))}>
+                  <option value="">Geen eindjaar</option>
+                  {yearOptions.filter(year=>!filters.yearFrom||year>=Number(filters.yearFrom)).map(year=><option key={year} value={year}>{year}</option>)}
+                </select>
+              </label>
               <label>Status
                 <select value={filters.status} onChange={event => setFilters(current => ({...current,status:event.target.value}))}>
                   <option value="">Alle statussen</option>
@@ -203,6 +217,8 @@ export default function ProjectsPage() {
                 </select>
               </label>
             </div>
+            <p className="muted projects-source-note">Projectjaar: aanmaakdatum in Plenion, startdatum in Teamleader of aanmaakdatum voor handmatige projecten.</p>
+            {(filters.yearFrom||filters.yearTo)&&unknownYears>0&&<label className="projects-year-unknown"><input type="checkbox" checked={filters.includeUnknownYear===true} onChange={event=>setFilters(current=>({...current,includeUnknownYear:event.target.checked}))}/> Projecten zonder bekend jaar ook tonen ({unknownYears})</label>}
             <div className="projects-results-heading">
               <p role="status" aria-live="polite"><strong>{filteredProjects.length}</strong> van {projects.length} projecten{filters.status && ` · ${filters.status}`}</p>
               <div className="projects-export-actions">
@@ -214,7 +230,7 @@ export default function ProjectsPage() {
             {filteredProjects.length > 0 ? (
               <div className="projects-table-scroll">
                 <table className="projects-table">
-                  <caption className="projects-visually-hidden">Projecten van het geselecteerde bedrijf, gefilterd op status, verantwoordelijke, bron en zoekterm</caption>
+                  <caption className="projects-visually-hidden">Projecten van het geselecteerde bedrijf, gefilterd op status, verantwoordelijke, bron, projectjaar en zoekterm</caption>
                   <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Administratief afgesloten</th><th scope="col">Deadline</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
                   <tbody>{filteredProjects.map(p => (
                     <tr key={p.id}>

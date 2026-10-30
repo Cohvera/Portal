@@ -3,12 +3,28 @@ export type OverviewProject = {
   name: string; customer: string; owner: string; status: string;
   sourceDates?: Record<string,string|null>|null;
   dueDate?:string|null;
+  sourcePlannedAt?:string|null; createdAt?:string|null;
   sourceIsActive?: boolean | null;
   sourceStatusCode?: string | null;
   sourceStatusLabel?: string | null; sourceIsClosed?: boolean | null;
   externalSource?: string | null; externalId?: string | null;
 };
-export type ProjectFilters = {query: string; status: string; owner: string; source: string; scope?: string};
+export type ProjectFilters = {query: string; status: string; owner: string; source: string; scope?: string; yearFrom?:string; yearTo?:string; includeUnknownYear?:boolean};
+// Use the source project date, never the date an imported project arrived in Portal.
+export function projectYear(p:OverviewProject):number|null {
+  const value=p.externalSource === 'PLENION' ? p.sourceDates?.created_date
+    : p.externalSource === 'TEAMLEADER' ? p.sourcePlannedAt
+    : !p.externalSource ? p.createdAt : null;
+  const match=value?.match(/^(\d{4})-\d{2}-\d{2}(?:T| |$)/);
+  if(!match || Number(match[1])<1000 || !Number.isFinite(Date.parse(value!)))return null;
+  return Number(match[1]);
+}
+function matchesYear(p:OverviewProject,filters:ProjectFilters){
+  if(!filters.yearFrom&&!filters.yearTo)return true;
+  const year=projectYear(p);
+  return year===null ? filters.includeUnknownYear===true
+    : (!filters.yearFrom||year>=Number(filters.yearFrom))&&(!filters.yearTo||year<=Number(filters.yearTo));
+}
 export function projectStatus(p: OverviewProject) {
   return ['PLENION', 'TEAMLEADER'].includes(p.externalSource || '') ? p.sourceStatusLabel || p.status : p.status;
 }
@@ -19,6 +35,7 @@ export function projectScope(p: OverviewProject): 'open' | 'closed' | 'unknown' 
 export function filterProjects<T extends OverviewProject>(projects: T[], filters: ProjectFilters): T[] {
   const query = filters.query.trim().toLocaleLowerCase('nl-BE');
   return projects.filter(p =>
+    matchesYear(p,filters) &&
     (!filters.scope || (filters.scope === "active" ? projectInExecution(p) : projectScope(p) === filters.scope)) &&
     (!filters.status || projectStatus(p) === filters.status) &&
     (!filters.owner || (filters.owner === '__unassigned__' ? !p.owner.trim() : p.owner === filters.owner)) &&
