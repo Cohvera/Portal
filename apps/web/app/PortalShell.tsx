@@ -102,6 +102,12 @@ export default function PortalShell({ children }: { children: ReactNode }) {
     };
   }, [isLogin]);
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
   if (isLogin) return <>{children}</>;
   if (!identity)
     return (
@@ -184,8 +190,9 @@ export default function PortalShell({ children }: { children: ReactNode }) {
           aria-controls="portal-sidebar"
           onClick={() => setOpen(!open)}
         >
-          ☰ Menu
+          {open ? "✕ Menu sluiten" : "☰ Menu"}
         </button>
+        {open && <button type="button" className="mobile-menu-backdrop" aria-label="Menu sluiten" onClick={() => setOpen(false)} />}
         <aside
           id="portal-sidebar"
           className={`sidebar ${open ? "is-open" : ""}`}

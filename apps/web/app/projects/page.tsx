@@ -8,7 +8,7 @@ import {
   request,
   type Project,
 } from "../../lib/projects";
-import { projectYear, filterProjects, projectScope, projectStatus, projectInExecution, projectExplanation, type ProjectFilters } from "../../lib/project-overview";
+import { projectDate, projectDateLabel, formatProjectDate, projectYear, filterProjects, projectScope, projectStatus, projectInExecution, projectExplanation, type ProjectFilters } from "../../lib/project-overview";
 import "./projects.css";
 import { projectsCsv } from "../../lib/project-csv";
 import { ProjectStatusHelp } from "./ProjectStatusHelp";
@@ -234,10 +234,10 @@ export default function ProjectsPage() {
                   <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Administratief afgesloten</th><th scope="col">Deadline</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
                   <tbody>{filteredProjects.map(p => (
                     <tr key={p.id}>
-                      <td>{companyCode === ALL_COMPANIES && <span className="projects-source-badge">{p.companyName}</span>}<strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}{p.externalSource === "PLENION" && <PlenionProjectDetails project={p} />}</td>
+                      <td>{companyCode === ALL_COMPANIES && <span className="projects-source-badge">{p.companyName}</span>}<strong className="projects-project-name">{p.name}</strong>{p.customer && <span className="projects-customer">{p.customer}</span>}<span className="projects-date"><span>{projectDateLabel(p)}</span>{projectDate(p) ? <time dateTime={projectDate(p)!}>{formatProjectDate(projectDate(p))}</time> : <span className="muted">Niet bekend</span>}</span>{p.externalSource === "PLENION" && <PlenionProjectDetails project={p} />}</td>
                       <td><span className="project-status"><span style={{backgroundColor:p.externalSource === "PLENION" ? (projectScope(p) === "closed" ? "#16834b" : "#2563eb") : p.statusColor || projectStatuses[p.status]}} />{projectStatus(p)}</span>{p.externalSource === "PLENION" && <span className="projects-customer">{projectExplanation(p)}</span>}</td>
                       <td>{projectScope(p) === "unknown" ? <span className="muted">Nog niet bevestigd</span> : <label className="projects-closed-flag"><input type="checkbox" checked={projectScope(p) === "closed"} disabled aria-label={`${p.name}: afgesloten volgens ${p.externalSource === "PLENION" ? "Plenion" : "portaalstatus"}`} />{projectScope(p) === "closed" ? "Ja" : "Nee"}</label>}</td>
-                      <td>{(p.externalSource === "PLENION" ? p.sourceDates?.deadline : p.dueDate)?.slice(0,10) || "Niet ingevuld"}</td>
+                      <td>{formatProjectDate(p.externalSource === "PLENION" ? p.sourceDates?.deadline : p.dueDate)}</td>
                       <td><span className={!p.owner.trim() ? "muted" : ""}>{p.owner || "Nog toe te wijzen"}</span></td>
                       <td><span className="projects-source-badge">{p.externalSource === "PLENION" ? "Plenion" : p.externalSource === "TEAMLEADER" ? "Teamleader" : "Portaal"}</span>{p.externalId && <span className="projects-customer">{p.externalSource === "TEAMLEADER" ? p.sourceExtraFields?.reference || p.externalId : p.externalId}</span>}</td>
                       <td>{companyCode === ALL_COMPANIES ? <button className="project-edit" onClick={()=>selectCompany(p.companyCode!)}>Open bedrijf</button> : <button className="project-edit" disabled={busy || !writable} aria-label={`${p.name} bewerken`} onClick={() => open(p)}>Bewerken</button>}

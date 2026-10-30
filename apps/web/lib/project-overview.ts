@@ -11,13 +11,28 @@ export type OverviewProject = {
 };
 export type ProjectFilters = {query: string; status: string; owner: string; source: string; scope?: string; yearFrom?:string; yearTo?:string; includeUnknownYear?:boolean};
 // Use the source project date, never the date an imported project arrived in Portal.
-export function projectYear(p:OverviewProject):number|null {
+export function projectDate(p:OverviewProject):string|null {
   const value=p.externalSource === 'PLENION' ? p.sourceDates?.created_date
     : p.externalSource === 'TEAMLEADER' ? p.sourcePlannedAt
     : !p.externalSource ? p.createdAt : null;
-  const match=value?.match(/^(\d{4})-\d{2}-\d{2}(?:T| |$)/);
-  if(!match || Number(match[1])<1000 || !Number.isFinite(Date.parse(value!)))return null;
-  return Number(match[1]);
+  return validProjectDay(value);
+}
+function validProjectDay(value?:string|null):string|null {
+  const match=value?.match(/^(\d{4}-\d{2}-\d{2})(?:T| |$)/);
+  if(!match || Number(match[1].slice(0,4))<1000)return null;
+  const parsed=new Date(match[1]+'T00:00:00Z');
+  return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===match[1]?match[1]:null;
+}
+export function projectDateLabel(p:OverviewProject){
+  return p.externalSource==='TEAMLEADER'?'Startdatum':'Aangemaakt';
+}
+export function formatProjectDate(value?:string|null):string {
+  const day=validProjectDay(value);
+  return day?day.split('-').reverse().join('/'):'Niet bekend';
+}
+export function projectYear(p:OverviewProject):number|null {
+  const day=projectDate(p);
+  return day?Number(day.slice(0,4)):null;
 }
 function matchesYear(p:OverviewProject,filters:ProjectFilters){
   if(!filters.yearFrom&&!filters.yearTo)return true;

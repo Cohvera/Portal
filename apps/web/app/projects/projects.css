@@ -55,3 +55,6 @@
 @media(max-width:600px){.projects-middleware-link{white-space:normal}}
 
 .projects-year-unknown{display:flex;align-items:center;gap:8px;margin:12px 0;font-size:14px}
+
+.projects-date{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;margin:9px 0;font-size:13px;color:#475467}
+.projects-date time{font-weight:700;color:#12213a;font-variant-numeric:tabular-nums;white-space:nowrap}

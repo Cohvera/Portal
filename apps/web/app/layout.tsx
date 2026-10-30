@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./responsive.css";
 import PortalShell from "./PortalShell";
 import type { ReactNode } from "react";
 

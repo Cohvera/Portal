@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {filterProjects, projectScope, type ProjectFilters} from './project-overview';
+import {projectDate, formatProjectDate, projectDateLabel, filterProjects, projectScope, type ProjectFilters} from './project-overview';
 const projects = [
   {name:'Werf 10',customer:'Klant A',owner:'Milan',status:'Actief',externalSource:'PLENION',externalId:'230001'},
   {name:'Werf 2',customer:'Klant B',owner:'',status:'Gepland',externalSource:null,externalId:null},
@@ -47,4 +47,17 @@ test('year ranges use source dates, include boundaries and never use import date
  assert.equal(filterProjects(rows,{...base,yearTo:'2018'}).length,1);
  assert.equal(filterProjects(rows,{...base,yearFrom:'2024',includeUnknownYear:true}).length,5);
  assert.equal(filterProjects(rows,base).length,6);
+});
+
+
+test('project dates display the original day, distinguish source dates and reject invalid dates',()=>{
+ const p={...projects[0],sourceDates:{created_date:'2018-10-08 05:57:01.530'}};
+ assert.equal(projectDate(p),'2018-10-08');
+ assert.equal(formatProjectDate(projectDate(p)),'08/10/2018');
+ assert.equal(formatProjectDate('2024-01-01T00:00:00+02:00'),'01/01/2024');
+ assert.equal(formatProjectDate('2024-02-30'),'Niet bekend');
+ assert.equal(formatProjectDate(null),'Niet bekend');
+ assert.equal(projectDate({...projects[0],createdAt:'2026-10-30'}),null);
+ assert.equal(projectDateLabel({...p,externalSource:'TEAMLEADER'}),'Startdatum');
+ assert.equal(projectDateLabel(p),'Aangemaakt');
 });

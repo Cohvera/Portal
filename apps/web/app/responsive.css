@@ -1,0 +1,101 @@
+/* Shared sizing: use the available workspace, including ultrawide monitors. */
+:root { --page-gutter: clamp(16px, 2vw, 40px); }
+.portal-content { container-type: inline-size; container-name: workspace; }
+.portal-content :where(main,section,article,header,form,fieldset,details,nav) { min-width:0; }
+.portal-content :where(h1,h2,h3,p,dd,code,a,button) { overflow-wrap:anywhere; }
+.portal-content :where(input,select,textarea) { max-width:100%; }
+.portal-content :where(img,video,svg) { max-width:100%; }
+.main { padding:var(--page-gutter); }
+.hub-page,.admin-page { padding:var(--page-gutter) var(--page-gutter) 48px; }
+.tool-page { width:calc(100% - 2 * var(--page-gutter)); }
+.admin-navigation { padding:20px var(--page-gutter) 0; }
+.sidebar { height:100dvh; scrollbar-gutter:stable; }
+.sidebar > * { flex-shrink:0; }
+.mobile-menu-backdrop { display:none; }
+.section-heading,.topbar,.tool-topline,.admin-topbar,.plugin-admin-head { flex-wrap:wrap; }
+.section-heading > *, .topbar > *, .hub-hero > *, .tool-header > *, .plugin-admin-head > * { min-width:0; }
+.secondary-button,.button-primary,.primary-action { max-width:100%; white-space:normal; align-items:center; justify-content:center; text-align:center; }
+.cards > *, .hub-cards > *, .hub-grid > *, .split > *, .tool-layout > *, .form-grid > *, .catalog-grid > * { min-width:0; }
+.split,.tool-layout,.form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.catalog-grid .catalog-card { min-height:390px; height:auto; }
+.catalog-grid { grid-auto-rows:auto; }
+.catalog-card footer,.tool-company-edit { flex-wrap:wrap; }
+.catalog-card footer strong { white-space:normal; }
+.catalog-hero > * { min-width:0; }
+.catalog-filters { max-width:100%; }
+.catalog-filters > * { min-width:0; }
+.projects-table-scroll,.process-table-scroll,.qbox-table-scroll,.roadmap-table-wrap,.inspection-tabs { position:relative; max-width:100%; min-width:0; overscroll-behavior-x:contain; }
+.task-board,.roadmap-board { position:relative; max-width:100%; min-width:0; overscroll-behavior-x:contain; }
+.portal-content pre { max-width:100%; overflow:auto; }
+.dialog-actions { gap:10px; }
+dialog { max-width:calc(100vw - 24px); max-height:calc(100dvh - 32px); }
+.operations-pdf-dialog header div { flex-wrap:wrap; }
+.projects-results-heading,.projects-export-actions { flex-wrap:wrap; }
+.qbox-column-group { min-width:0; }
+.qbox-column-group label > * { min-width:0; }
+.qbox-column-group input[type=checkbox] { flex-shrink:0; }
+
+/* Break on the content width, rather than squeezing panels beside the sidebar. */
+@container workspace (max-width: 1050px) {
+  .hub-hero,.tool-header { flex-wrap:wrap; }
+  .framework-strip,.tool-kpis,.process-stats,.roadmap-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .operations-columns { grid-template-columns:minmax(0,1fr); }
+  .operations-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .inspection-followup { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .install-form { grid-template-columns:minmax(0,1fr) auto; }
+  .install-form label { grid-column:1/-1; }
+}
+@container workspace (max-width: 720px) {
+  .topbar,.section-heading,.admin-topbar,.tool-topline,.process-section-heading { flex-direction:column; align-items:stretch; gap:16px; }
+  .hub-hero,.tool-header { flex-direction:column; padding:24px; }
+  .hub-hero h1,.tool-header h1 { font-size:clamp(28px,6vw,40px); line-height:1.15; }
+  .split,.tool-layout,.action-grid,.admin-stats,.roadmap-phases,.roadmap-bottom { grid-template-columns:minmax(0,1fr); }
+  .recent-tools-grid { grid-template-columns:minmax(0,1fr); }
+  .catalog-hero { padding:24px; }
+  .catalog-hero-note { display:none; }
+  .catalog-toolbar,.catalog-shortcut { flex-direction:column; align-items:stretch; }
+  .catalog-toolbar .catalog-search { width:100%; margin-left:0; }
+  .projects-filter-bar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .projects-search { grid-column:1/-1; }
+  .qbox-metrics { grid-template-columns:minmax(0,1fr); }
+  .process-library-summary { flex-wrap:wrap; }
+  .process-library-toggle { flex-shrink:1; justify-content:flex-start; }
+}
+@container workspace (max-width: 450px) {
+  .cards,.hub-cards,.hub-grid,.project-grid,.task-list,.catalog-grid { grid-template-columns:minmax(0,1fr); }
+  .form-grid,.projects-filter-bar,.roadmap-edit-grid { grid-template-columns:minmax(0,1fr); }
+  .projects-status-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .projects-search { grid-column:auto; }
+  .operations-metrics,.framework-strip,.tool-kpis { grid-template-columns:minmax(0,1fr); }
+  .task-toolbar > label,.process-filters > label { flex:1 1 100%; min-width:0; }
+  .view-toggle { flex-wrap:wrap; }
+  .inspection-topline,.inspection-save,.inspection-document,.inspection-card-footer { flex-wrap:wrap; }
+  .inspection-filters > * { flex:1 1 100%; }
+  .inspection-filters label { flex-wrap:wrap; }
+  .inspection-followup { grid-template-columns:minmax(0,1fr); }
+  .account-identity { min-width:0; }
+  .account-controls { flex-wrap:wrap; }
+  .process-panel,.admin-panel,.plugin-admin-card,.inspection-editor,.operations-hub .card,.qbox-monitor .card { padding:16px; }
+  .roadmap-toolbar > div { flex-wrap:wrap; }
+  .install-form { grid-template-columns:minmax(0,1fr); }
+  .operations-problem-filters button { max-width:100%; }
+  .operations-problem-filters button span { flex-shrink:0; }
+}
+@media(max-width:800px) {
+  .mobile-menu { height:52px; }
+  .sidebar { top:52px; height:calc(100dvh - 52px); width:min(290px,calc(100vw - 48px)); }
+  .mobile-menu-backdrop { display:block; position:fixed; inset:52px 0 0; z-index:35; border:0; padding:0; background:#081a3370; }
+  .shell-tv .mobile-menu-backdrop { display:none; }
+  .main { padding:20px 16px; }
+  .admin-navigation { padding-inline:16px; }
+  .secondary-button,.button-primary,.primary-action,.project-edit,.catalog-filters button { min-height:44px; }
+  .task-dialog,.catalog-dialog { padding:20px; }
+  .operations-pdf-dialog { height:calc(100dvh - 24px); padding:12px; }
+  /* Avoid browser zoom when focusing form controls on touch devices. */
+  .portal-content input:not([type=checkbox]):not([type=radio]),.portal-content select,.portal-content textarea { font-size:16px; }
+}
+
+.projects-table .project-edit { white-space:nowrap; }
+/* Native selects have a large intrinsic width when option labels are long. */
+dialog :where(form,fieldset,label) { min-width:0; }
+dialog :where(select,input:not([type=checkbox]):not([type=radio]),textarea) { min-width:0; max-width:100%; width:100%; }
