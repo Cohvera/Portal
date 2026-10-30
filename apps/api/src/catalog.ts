@@ -31,10 +31,10 @@ function object(value: unknown): Record<string, unknown> {
     throw new BadRequestException("Ongeldige toolgegevens.");
   return value as Record<string, unknown>;
 }
-async function companyCodes(value: unknown) {
+async function companyCodes(value: unknown, allowEmpty = false) {
   if (
     !Array.isArray(value) ||
-    !value.length ||
+    (!allowEmpty && !value.length) ||
     value.length > 100 ||
     !value.every((code) => typeof code === "string")
   )
@@ -136,7 +136,7 @@ export class CatalogController {
   @Patch(":id/companies")
   async assign(@Param("id") id: string, @Body() body: unknown) {
     const actor = portalAdmin();
-    const codes = await companyCodes(object(body).companyCodes);
+    const codes = await companyCodes(object(body).companyCodes, true);
     return prisma.$transaction(async (tx) => {
       const existing = await tx.toolCatalog.findUnique({ where: { id } });
       if (!existing && !builtinIds.has(id))

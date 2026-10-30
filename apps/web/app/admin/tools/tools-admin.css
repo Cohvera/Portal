@@ -1,0 +1,7 @@
+.tool-visibility-table { width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e1e6ee; border-radius:14px; overflow:hidden; }
+.tool-visibility-table caption { text-align:left; padding:0 0 14px; }
+.tool-visibility-table th,.tool-visibility-table td { padding:16px; border-bottom:1px solid #e1e6ee; text-align:left; }
+.tool-visibility-table thead th { background:#f5f7fb; white-space:nowrap; }
+.tool-visibility-table tbody tr:last-child>* { border-bottom:0; }
+.tool-visibility-table .company-toggle { min-width:115px; width:100%; }
+.tool-visibility-table button:focus-visible { outline:3px solid #343fd1; outline-offset:3px; }

@@ -54,7 +54,6 @@ export default function ToolsPage() {
   }
   async function saveAssignment(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(!assignment||busy||!canManageCatalog)return;
-    if(!selectedCompanies.length){setAssignmentError("Selecteer minstens één bedrijf.");return;}
     setBusy(true);
     try {
       await request(`/api/catalog/${encodeURIComponent(assignment.id)}/companies`,{method:"PATCH",body:JSON.stringify({companyCodes:selectedCompanies})});
@@ -62,7 +61,7 @@ export default function ToolsPage() {
     }catch(e){setAssignmentError(e instanceof Error?e.message:"Opslaan mislukt.");}finally{setBusy(false);}
   }
   const companyPicker = <fieldset className="tool-company-picker" disabled={busy}><legend>Bedrijven</legend><p className="muted">Selecteer één of meerdere bedrijven.</p>{companies.map(c=><label key={c.code}><input type="checkbox" checked={selectedCompanies.includes(c.code)} onChange={e=>setSelectedCompanies(current=>e.target.checked?[...current,c.code]:current.filter(code=>code!==c.code))}/><span>{c.name}</span></label>)}</fieldset>;
-  const companyLabel=(codes:string[])=>codes.map(code=>companies.find(c=>c.code===code)?.name||code).join(", ");
+  const companyLabel=(codes:string[])=>codes.length?codes.map(code=>companies.find(c=>c.code===code)?.name||code).join(", "):"Overal verborgen";
   async function addEntry(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();if(busy||!canManageCatalog)return;
     const form = event.currentTarget;

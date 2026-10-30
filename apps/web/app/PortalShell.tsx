@@ -149,6 +149,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
       ? [
           { href: "/admin/accounts", name: "Accounts" },
           { href: "/admin/plugins", name: "Plugin Manager" },
+          { href: "/admin/tools", name: "Tools per bedrijf" },
         ]
       : []),
   ];
