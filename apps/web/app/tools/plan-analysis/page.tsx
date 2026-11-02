@@ -7,6 +7,16 @@ import './plan-analysis.css';
 type Calibration={metersPerPoint:number;referenceMeters:number};
 type Mode='inspect'|'calibrate'|'area'|'count';
 const number=(n:number)=>n.toLocaleString('nl-BE',{maximumFractionDigits:2});
+const countColors = [
+  '#2563eb', // blauw
+  '#16a34a', // groen
+  '#9333ea', // paars
+  '#ea580c', // oranje
+  '#0891b2', // turquoise
+  '#db2777', // roze
+  '#ca8a04', // geel
+  '#4b5563', // grijs
+];
 function download(name:string,value:unknown){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export default function PlanAnalysis(){
  const [doc,setDoc]=useState<PDFDocumentProxy|null>(null),[fileName,setFileName]=useState(''),[page,setPage]=useState(1),[busy,setBusy]=useState(false),[progress,setProgress]=useState(''),[error,setError]=useState('');
@@ -58,10 +68,47 @@ export default function PlanAnalysis(){
  const switchMode=(next:Mode)=>{setMode(next);setPoints([]);setHighlight(null);setError('');};
  const calibration=calibrations[page];
  const visible=findings.filter(f=>categories.includes(f.category));
- const groupedMarks=Object.values(marks.reduce<Record<string,{name:string;category:AnalysisCategory;count:number}>>((groups,m)=>{const key=JSON.stringify([m.category,m.name]);groups[key]??={name:m.name,category:m.category,count:0};groups[key].count++;return groups;},{}));
+ const groupedMarks = Object.values(
+  marks.reduce<
+    Record<
+      string,
+      { name: string; category: AnalysisCategory; count: number; color: string }
+    >
+  >((groups, m) => {
+    const key = JSON.stringify([m.category, m.name]);
+    groups[key] ??= {
+      name: m.name,
+      category: m.category,
+      count: 0,
+      color: m.color,
+    };
+    groups[key].count++;
+    return groups;
+  }, {}),
+);
  function clickPlan(e:React.MouseEvent<SVGSVGElement>){
   if(rendering||busy||mode==='inspect')return;const rect=e.currentTarget.getBoundingClientRect();const point={x:(e.clientX-rect.left)/rect.width*view.width,y:(e.clientY-rect.top)/rect.height*view.height};
-  if(mode==='count'){if(!countName.trim()){setError('Geef eerst een naam voor het te tellen symbool.');return;}if(marks.length>=2000){setError('Maximaal 2.000 telmarkeringen per analyse.');return;}setMarks([...marks,{id:crypto.randomUUID(),page,name:countName.trim(),category:countCategory,point}]);}
+  if(mode==='count'){if(!countName.trim()){setError('Geef eerst een naam voor het te tellen symbool.');return;}if(marks.length>=2000){setError('Maximaal 2.000 telmarkeringen per analyse.');return;}const name = countName.trim();
+const existingMark = marks.find(
+  m => m.category === countCategory && m.name === name,
+);
+const groupCount = new Set(
+  marks.map(m => JSON.stringify([m.category, m.name])),
+).size;
+const color =
+  existingMark?.color ?? countColors[groupCount % countColors.length];
+
+setMarks([
+  ...marks,
+  {
+    id: crypto.randomUUID(),
+    page,
+    name,
+    category: countCategory,
+    point,
+    color,
+  },
+]);}
   else if(mode==='calibrate')setPoints(points.length>=2?[point]:[...points,point]);
   else if(points.length<100)setPoints([...points,point]);
  }
@@ -75,7 +122,7 @@ export default function PlanAnalysis(){
    <div className="plan-modes">{([['inspect','Bekijken'],['calibrate','Schaal instellen'],['area','Oppervlakte meten'],['count','Symbolen tellen']] as const).map(([value,label])=><button className="secondary-button" key={value} aria-pressed={mode===value} disabled={busy||rendering||(value==='area'&&!calibration)} onClick={()=>switchMode(value)}>{label}</button>)}</div>
    <div className="plan-canvas-scroll"><div className="plan-sheet" style={{width:`${zoom}%`,aspectRatio:`${view.width}/${view.height}`}}><canvas ref={canvas} aria-label={`Planpagina ${page}`}/><svg viewBox={`0 0 ${view.width} ${view.height}`} onClick={clickPlan} aria-label="Meetlaag: klik op de hoeken of symbolen in het plan" style={{cursor:mode==='inspect'?'default':'crosshair'}}>
     {measurements.filter(m=>m.page===page).map(m=><polygon key={m.id} points={m.points.map(p=>`${p.x},${p.y}`).join(' ')} fill="#4660ef22" stroke="#394bdb" strokeWidth={1.5}><title>{m.name}: {number(m.area)} m²</title></polygon>)}
-    {marks.filter(m=>m.page===page).map(m=><g key={m.id}><circle cx={m.point.x} cy={m.point.y} r={5} fill="#d46b22" stroke="white" strokeWidth={1.5}/><title>{m.name}</title></g>)}
+    {marks.filter(m=>m.page===page).map(m=><g key={m.id}><circle cx={m.point.x} cy={m.point.y} r={5} fill={m.color} stroke="white" strokeWidth={1.5}/><title>{m.name}</title></g>)}
     {points.length>0&&<><polyline points={points.map(p=>`${p.x},${p.y}`).join(' ')} fill={mode==='area'?'#1b9b7422':'none'} stroke="#11865b" strokeWidth={2}/>{points.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={3} fill="#11865b"/>)}</>}
     {highlight&&<circle cx={highlight.x} cy={highlight.y} r={12} fill="#ffd45366" stroke="#ca8100" strokeWidth={2}/>}
    </svg></div></div>
@@ -90,7 +137,20 @@ export default function PlanAnalysis(){
    {!categories.length?<p>Selecteer minstens één analysecategorie.</p>:!visible.length?<p>Geen passende tekst gevonden. Je kunt het plan wel handmatig meten of tellen.</p>:<div className="plan-table-scroll"><table><thead><tr><th>Gecontroleerd</th><th>Categorie / type</th><th>Gevonden tekst</th><th>Waarde</th><th>Bron</th></tr></thead><tbody>{visible.map(f=><tr key={f.id}><td><input type="checkbox" aria-label={`Gecontroleerd: ${f.label}`} checked={f.reviewed} onChange={e=>setFindings(findings.map(x=>x.id===f.id?{...x,reviewed:e.target.checked}:x))}/></td><td>{analysisCategories[f.category]}<small>{{room:'Ruimtenaam',area:'Opgegeven oppervlakte',mention:'Tekstvermelding',quantity:'Aantal in tekst', 'u-value':'Opgegeven U-waarde'}[f.kind]}</small></td><td>{f.evidence}</td><td>{f.value===null?'Niet bepaald':`${number(f.value)} ${f.unit}`}</td><td><button className="secondary-button" onClick={()=>{setPage(f.page);setPoints([]);setMode('inspect');setHighlight(f.point);document.querySelector('.plan-viewer')?.scrollIntoView({behavior:'smooth',block:'start'});}}>Toon op plan · p. {f.page}</button></td></tr>)}</tbody></table></div>}
   </section>
   <section className="card plan-results"><h2>Gemeten ruimtes</h2><p>Vink een ruimte pas aan nadat naam, omtrek en meetschaal zijn gecontroleerd. Alleen deze ruimtes kunnen naar de warmteverliescalculator.</p>{!measurements.length?<p className="muted">Nog geen ruimtes gemeten. Stel eerst de schaal in.</p>:<div className="plan-table-scroll"><table><thead><tr><th>Gecontroleerd</th><th>Ruimte</th><th>Oppervlakte</th><th>Pagina</th><th>Actie</th></tr></thead><tbody>{measurements.map(m=><tr key={m.id}><td><input type="checkbox" aria-label={`Oppervlakte gecontroleerd: ${m.name}`} checked={m.reviewed} onChange={e=>setMeasurements(measurements.map(x=>x.id===m.id?{...x,reviewed:e.target.checked}:x))}/></td><td><input aria-label={`Ruimtenaam: ${m.name}`} value={m.name} maxLength={120} onChange={e=>setMeasurements(measurements.map(x=>x.id===m.id?{...x,name:e.target.value,reviewed:false}:x))}/></td><td>{number(m.area)} m²</td><td>{m.page}</td><td><button className="secondary-button" onClick={()=>setMeasurements(measurements.filter(x=>x.id!==m.id))}>Verwijderen</button></td></tr>)}</tbody></table></div>}</section>
-  <section className="card plan-results"><h2>Handmatige tellingen</h2>{!marks.length?<p className="muted">Nog geen symbolen geteld.</p>:<ul>{groupedMarks.map(g=><li key={`${g.category}-${g.name}`}><strong>{g.count} × {g.name}</strong> · {analysisCategories[g.category]}</li>)}</ul>}<p>Deze aantallen komen alleen van jouw telmarkeringen, niet uit automatische symboolherkenning of tekstvermeldingen.</p></section>
+  <section className="card plan-results"><h2>Handmatige tellingen</h2>{!marks.length?<p className="muted">Nog geen symbolen geteld.</p>:<ul>{groupedMarks.map(g=><li key={`${g.category}-${g.name}`}><strong>
+  <span
+    aria-hidden="true"
+    style={{
+      display: 'inline-block',
+      width: 12,
+      height: 12,
+      borderRadius: '50%',
+      backgroundColor: g.color,
+      marginRight: 8,
+    }}
+  />
+  {g.count} × {g.name}
+</strong> · {analysisCategories[g.category]}</li>)}</ul>}<p>Deze aantallen komen alleen van jouw telmarkeringen, niet uit automatische symboolherkenning of tekstvermeldingen.</p></section>
   <section className="card plan-export"><h2>4. Exporteer je analyse</h2><p>Het analysebestand bevat de geselecteerde tekstbevindingen, jouw metingen, telmarkeringen en bronpagina’s. Het oorspronkelijke PDF-bestand wordt niet meegestuurd. Bewaar dat apart; heropenen van een analysesessie is nog niet voorzien.</p><div className="plan-actions"><button className="button-primary" onClick={()=>download('plananalyse.json',{version:1,kind:'cohvera-plan-analysis',source:fileName,createdAt:new Date().toISOString(),categories,findings:visible,measurements,marks,calibrations,limitations:['Geen externe AI of OCR','Geen automatische symbooltelling','U-waarden en hoogtes niet afgeleid uit geometrie','Niet-gecontroleerde bevindingen zijn voorstellen']})}>Analyse downloaden (JSON)</button><button className="secondary-button" disabled={!measurements.some(m=>m.reviewed&&m.name.trim())} onClick={()=>{try{download('warmteverlies-uit-plan.json',measurementHeatDraft(fileName,measurements.filter(m=>m.name.trim())));}catch(e){setError((e as Error).message);}}}>Warmteverliesvoorbereiding downloaden</button></div><p className="muted">Open de warmteverliesvoorbereiding via ‘Bestand openen’ in de calculator. Hoogtes blijven ontbrekend en er worden geen U-waarden of ventilatiedebieten verzonnen. Er verschijnt pas een rekenresultaat nadat je het dossier aanvult.</p></section>
   </>}
  </main>;
