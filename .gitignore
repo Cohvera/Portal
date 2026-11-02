@@ -9,3 +9,6 @@ coverage/
 .DS_Store
 
 project-cleanup-backups/
+
+# Generated local PDF.js assets (copied during web build/dev)
+apps/web/public/pdfjs/

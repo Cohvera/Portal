@@ -12,6 +12,12 @@ export type ToolModule = {
 
 export const tools: ToolModule[] = [
   {
+    slug: "plan-analysis", name: "Plananalyse", category: "Engineering", href: "/tools/plan-analysis",
+    description: "Lees PDF-plannen lokaal uit, meet oppervlaktes en tel technische symbolen. Controleer de bron en exporteer je analyse.",
+    status: "Beta", actions: ["Lokale PDF-analyse", "Oppervlaktes meten", "Symbolen tellen", "JSON-export"],
+    workflow: ["Plan openen", "Analyse kiezen", "Bron controleren", "Meten & tellen", "Exporteren"]
+  },
+  {
     slug: "tv-screen", name: "Tv-scherm", category: "Projectmanagement", href: "/projects/tv",
     description: "Toon projecten, planning, voertuigen en ophalingen op een bedrijfsscherm, afgestemd op je bedrijfsselectie en accountrechten.",
     status: "MVP", actions: ["Bedrijfsoverzicht", "Automatische schermrotatie", "Volledig scherm"],

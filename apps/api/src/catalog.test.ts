@@ -20,6 +20,7 @@ test('tool visibility can be disabled everywhere and restored per company, only 
   assert.equal(toolMatchesCompany('inspections','QHOME',{inspections:saved}),false);
   await assert.rejects(run(['Portal.Admin'],{companyCodes:['UNKNOWN']}),/Onbekend/);
   await assert.rejects(run(['Portal.Admin'],{companyCodes:[]},'unknown-tool'),/Onbekende tool/);
-  assert.equal(writes,2);
+  await run(['Portal.Admin'],{companyCodes:['WARCO']},'plan-analysis');assert.deepEqual(saved,['WARCO']);
+  assert.equal(writes,3);
  }finally{prisma.$transaction=transaction;prisma.company.count=count;}
 });

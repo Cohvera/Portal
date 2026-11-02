@@ -18,6 +18,7 @@ import { portalAdmin } from "./auth/context";
 const builtinIds = new Set([
   "tv-screen",
   "heat-loss",
+  "plan-analysis",
   "warehouse-manager",
   "q-portal",
   "project-tasks",
