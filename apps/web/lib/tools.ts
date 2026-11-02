@@ -18,9 +18,9 @@ export const tools: ToolModule[] = [
     workflow: ["Bedrijf kiezen", "Scherm instellen", "Overzicht tonen"]
   },
   {
-    slug: "heat-loss", name: "Warmteverliescalculator", category: "Engineering",
+    slug: "heat-loss", name: "Warmteverliescalculator", category: "Engineering", href: "/tools/heat-loss",
     description: "Breng het warmteverlies per ruimte in kaart en bereid de dimensionering van verwarming en warmtepompen voor.",
-    status: "Planned", actions: ["Berekening per ruimte", "Overzicht van het gebouw", "Rapport voor het dossier"],
+    status: "Beta", actions: ["Berekening per ruimte", "Overzicht van het gebouw", "Rapport voor het dossier"],
     workflow: ["Gebouw & ontwerpcondities", "Ruimtes & bouwdelen", "Isolatie & ventilatie", "Warmteverlies", "Dimensionering & rapport"]
   },
   {
