@@ -4,7 +4,7 @@ export type Point={x:number;y:number};
 export type PlanLine={text:string;page:number;x:number;y:number};
 export type Finding={id:string;page:number;category:AnalysisCategory;kind:'room'|'area'|'mention'|'quantity'|'u-value';label:string;evidence:string;value:number|null;unit:string;point:Point;reviewed:boolean};
 export type Measurement={id:string;page:number;name:string;area:number;points:Point[];metersPerPoint:number;referenceMeters:number;reviewed:boolean};
-export type CountMark={id:string;page:number;name:string;point:Point;category:AnalysisCategory; color: string};
+export type CountMark={id:string;page:number;name:string;point:Point;category:AnalysisCategory; color: string;source?:'template';score?:number};
 export const distance=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function polygonArea(points:Point[]){return Math.abs(points.reduce((n,p,i)=>{const q=points[(i+1)%points.length];return n+p.x*q.y-q.x*p.y;},0))/2;}
 function intersects(a:Point,b:Point,c:Point,d:Point){

@@ -15,10 +15,10 @@ Route: `/tools/plan-analysis`. Beschikbaar in Tools & Solutions, inclusief bedri
 2. Opgegeven oppervlaktes, U-waarden en aantallen alleen uit expliciete tekst overnemen. Bouwkundige afmetingen worden niet uit elektrische maatlijnen afgeleid.
 3. Bronpagina en tekstpositie tonen; controle blijft bij de gebruiker. Legenda's en nota's zijn geen geïnstalleerde aantallen. Herhaalde of verwante vermeldingen worden niet automatisch opgeteld.
 4. Een gekende afstand met twee punten kalibreren, per pagina. Binnencontouren met een polygonale lijn meten. Kruisende contouren worden geweigerd. Dit corrigeert geen perspectiefvervorming.
-5. Symbolen handmatig met stippen tellen. Elke klik is één telling; de gebruiker bepaalt of een dubbel stopcontact één combinatie of twee aansluitingen voorstelt.
+5. Symbolen handmatig met stippen tellen of lokaal voorstellen laten zoeken op basis van één voorbeeldsymbool. Kies twee hoeken rond het voorbeeld en daarna een zoekgebied zonder legenda. De zoeker vergelijkt vorm en eventueel kleur, met schaalvarianten 85/100/115% en optionele kwartslagen. Controleer voorstellen en bevestig ze voordat ze meetellen. Onjuiste punten kunnen worden verwijderd; gemiste symbolen handmatig toegevoegd. Elke klik is één telling; de gebruiker bepaalt of een dubbel stopcontact één combinatie of twee aansluitingen voorstelt.
 6. Alleen bevestigde gemeten ruimtes exporteren naar warmteverlies-JSON. Vloeroppervlakte en bron gaan mee; hoogte is 0 en bouwdelen ontbreken, zodat de calculator geen volledig resultaat toont voordat ontbrekende gegevens zijn ingevuld. Temperatuurstartwaarden en luchtverliezen moeten worden gecontroleerd.
 
-Geen automatische beeldherkenning, OCR, normcontrole, U-waarde-afleiding of volledige meetstaat. Scans kunnen handmatig worden gemeten/geteld.
+Geen algemene AI-planinterpretatie, OCR, normcontrole, U-waarde-afleiding of volledige meetstaat. Voorbeeldherkenning werkt per pagina en kent de betekenis van symbolen niet; gelijkenisscores zijn geen betrouwbaarheidskansen. Overlappende lijnen, scans, afwijkende schaal of subtiele verschillen tussen symbolen kunnen foutieve of ontbrekende voorstellen geven. Maximaal 500 voorstellen per zoekopdracht, met een lokale worker en een tijdslimiet van 60 seconden. Scans kunnen handmatig worden gemeten/geteld.
 
 ## Build
 
@@ -26,7 +26,7 @@ Geen automatische beeldherkenning, OCR, normcontrole, U-waarde-afleiding of voll
 
 ## Controles
 
-- `node --import ./apps/api/node_modules/tsx/dist/loader.mjs --test apps/web/lib/plan-analysis.test.ts apps/web/lib/heat-loss.test.ts`
+- `node --import ./apps/api/node_modules/tsx/dist/loader.mjs --test apps/web/lib/plan-analysis.test.ts apps/web/lib/symbol-match.test.ts apps/web/lib/heat-loss.test.ts`
 - `TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import ./apps/api/node_modules/tsx/dist/loader.mjs --test apps/api/src/catalog.test.ts`
 - Web- en API-build.
 - Browsercontrole met een lokaal techniekenplan: tekstuitlezing, bron, kalibratie, polygoon, telling en JSON-export. Netwerkcontrole: geen externe requests en geen plan-upload. Mobiel, tablet en desktop gecontroleerd.
