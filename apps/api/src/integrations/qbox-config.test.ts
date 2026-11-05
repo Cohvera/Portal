@@ -67,3 +67,37 @@ test('filter changes require a capable reader and statuses from this company',as
   assert.deepEqual(writes[0].data.projectFilter,body.projectFilter);
  }finally{prisma.$transaction=original;}
 });
+
+test('relationship filter normalizes all and rejects invalid values',()=>{
+ assert.equal(projectFilter({statusCodes:[],outOfWip:'any',relationshipType:'any'}),null);
+ assert.deepEqual(projectFilter({statusCodes:[],outOfWip:'any',relationshipType:'prospect'}),{statusCodes:[],outOfWip:'any',relationshipType:'prospect'});
+ for(const relationshipType of [null,true,'invalid',"customer' OR 1=1"])assert.throws(()=>projectFilter({statusCodes:[],outOfWip:'any',relationshipType}));
+});
+test('relationship filters require reader 3.5 and the reported source column',async()=>{
+ const original=prisma.$transaction;let version='3.4';let columns=['KLCLEUNIK'];let writes=0;
+ try{
+  (prisma as any).$transaction=async(fn:any)=>fn({qboxReaderConfig:{
+   findUnique:async()=>({schemaReportedAt:new Date(),schemaColumns:columns,readerVersion:version}),
+   updateMany:async()=>{writes++;return {count:1};},
+  }});
+  const body={revision:0,selectedColumns:[],projectFilter:{statusCodes:[],outOfWip:'any',relationshipType:'prospect'}};
+  await assert.rejects(()=>saveReaderConfig('WARCO',body));version='3.5';
+  await assert.rejects(()=>saveReaderConfig('WARCO',body));assert.equal(writes,0);
+  columns=['IDProsPect','KLCLEUNIK'];
+  await saveReaderConfig('WARCO',body);
+  await saveReaderConfig('WARCO',{...body,projectFilter:{...body.projectFilter,relationshipType:'customer'}});
+  assert.equal(writes,2);
+ }finally{prisma.$transaction=original;}
+});
+
+test('configuration exchange rejects older readers with an active relationship filter',async()=>{
+ const originals=[prisma.company.findUnique,prisma.qboxReaderConfig.upsert];
+ try{
+  (prisma.company as any).findUnique=async()=>({isActive:true});
+  (prisma.qboxReaderConfig as any).upsert=async()=>({revision:1,selectedColumns:[],projectFilter:{statusCodes:[],outOfWip:'any',relationshipType:'customer'}});
+  await assert.rejects(()=>exchangeReaderConfig('WARCO',{columns:['KLCLEUNIK'],readerVersion:'3.4'}));
+  const response=await exchangeReaderConfig('WARCO',{columns:['KLCLEUNIK'],readerVersion:'3.5'});
+  assert.equal(response.minimumReaderVersion,'3.5');
+  assert.equal(response.projectFilter?.relationshipType,'customer');
+ }finally{[prisma.company.findUnique,prisma.qboxReaderConfig.upsert]=originals as any;}
+});

@@ -9,7 +9,8 @@ export function ColumnSettings({data,companyCode,canManage,onSaved}:{data:Monito
  const [statusMode,setStatusMode]=useState(config?.projectFilter?.statusCodes.length?'selected':'all');
  const [major,minor]=(config?.readerVersion??'').split('.').map(Number);
  const supportsFilters=major>3||(major===3&&minor>=3);
- const selection=filter.statusCodes.length||filter.outOfWip!=='any'?filter:null;
+ const supportsRelationshipFilter=major>3||(major===3&&minor>=5);
+ const selection=filter.statusCodes.length||filter.outOfWip!=='any'||filter.relationshipType?filter:null;
  const knownStatuses=Array.from(new Map((config?.availableStatuses??[]).map(s=>[s.code,s])).values());
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
  const available=new Set(config?.schemaColumns.map(c=>c.toLowerCase())??[]);
@@ -26,6 +27,8 @@ export function ColumnSettings({data,companyCode,canManage,onSaved}:{data:Monito
  <label>Statussen<select value={statusMode} onChange={e=>{setStatusMode(e.target.value);if(e.target.value==='all')setFilter(f=>({...f,statusCodes:[]}));}}><option value="all">Alle statussen</option><option value="selected">Alleen gekozen statussen</option></select></label>
  {statusMode==='selected'&&<div>{!knownStatuses.length&&<p>Nog geen statuslijst ontvangen. Laat de bijgewerkte Q-box synchroniseren.</p>}{knownStatuses.map(s=><label key={s.code}><input type="checkbox" checked={filter.statusCodes.includes(s.code)} onChange={e=>setFilter(f=>({...f,statusCodes:e.target.checked?[...f.statusCodes,s.code].sort():f.statusCodes.filter(c=>c!==s.code)}))}/>{s.code} · {s.label}</label>)}{filter.statusCodes.filter(c=>!knownStatuses.some(s=>s.code===c)).map(c=><label key={c}><input type="checkbox" checked onChange={()=>setFilter(f=>({...f,statusCodes:f.statusCodes.filter(v=>v!==c)}))}/>{c} · Niet meer in gemelde statuslijst</label>)}</div>}
  <label>Uit WIP<select value={filter.outOfWip} onChange={e=>setFilter(f=>({...f,outOfWip:e.target.value as ProjectSelection['outOfWip']}))}><option value="any">Maakt niet uit (aan en uit)</option><option value="off">Alleen uit</option><option value="on">Alleen aan</option></select></label>
+ <label>Prospect of klant<select value={filter.relationshipType??'any'} disabled={!supportsRelationshipFilter} onChange={e=>setFilter(f=>{const {relationshipType,...rest}=f;return e.target.value==='any'?rest:{...rest,relationshipType:e.target.value as 'prospect'|'customer'};})}><option value="any">Alle</option><option value="prospect" disabled={!available.has('idprospect')}>Prospect</option><option value="customer" disabled={!available.has('klcleunik')}>Klant</option></select></label>
+ {!supportsRelationshipFilter&&<p>Werk de Q-box bij naar reader 3.5 en synchroniseer om op prospect of klant te filteren.</p>}
  </fieldset>
  {!supportsFilters&&<p>Projectselectie vereist reader 3.3 of nieuwer. Tot die tijd blijft de bestaande selectie behouden.</p>}
  <p>Projecten buiten deze selectie verdwijnen na de volgende geslaagde sync uit de actuele lijst. Hun gegevens blijven bewaard.</p>

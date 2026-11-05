@@ -18,15 +18,26 @@ export function extraFields(input:unknown):Record<string,string|null>{
   return [key,typeof value==='string'?value.replace(/\u0000/g,'').trim():null];
  }));
 }
-export type ProjectFilter={statusCodes:string[];outOfWip:'any'|'on'|'off'};
+export type ProjectFilter={statusCodes:string[];outOfWip:'any'|'on'|'off';relationshipType?:'any'|'prospect'|'customer'};
 export function projectFilter(input:unknown):ProjectFilter|null{
  if(input==null)return null;
  const f=input as ProjectFilter;
  if(typeof f!=='object'||Array.isArray(f)||!Array.isArray(f.statusCodes)||f.statusCodes.length>100||f.statusCodes.some(c=>typeof c!=='string'||!/^[A-Za-z0-9_-]{1,30}$/.test(c))||new Set(f.statusCodes).size!==f.statusCodes.length||!['any','on','off'].includes(f.outOfWip))throw new BadRequestException('Ongeldige status- of Uit WIP-filter.');
- return f.statusCodes.length||f.outOfWip!=='any'?{statusCodes:[...f.statusCodes].sort(),outOfWip:f.outOfWip}:null;
+ if(f.relationshipType!==undefined&&!['any','prospect','customer'].includes(f.relationshipType))throw new BadRequestException('Ongeldige prospect- of klantfilter.');
+ const relationship=f.relationshipType&&f.relationshipType!=='any'?{relationshipType:f.relationshipType}:{};
+ return f.statusCodes.length||f.outOfWip!=='any'||relationship.relationshipType?{statusCodes:[...f.statusCodes].sort(),outOfWip:f.outOfWip,...relationship}:null;
 }
 export function supportsProjectFilter(version:string){
  const [major,minor]=version.split('.').map(Number);return major>3||(major===3&&minor>=3);
+}
+export function supportsRelationshipFilter(version:string){
+ const [major,minor]=version.split('.').map(Number);return major>3||(major===3&&minor>=5);
+}
+function validateRelationshipFilter(filter:ProjectFilter|null,version:string,columns:string[]){
+ if(!filter?.relationshipType)return;
+ if(!supportsRelationshipFilter(version))throw new ConflictException('Werk eerst de Q-box bij naar reader 3.5 en voer een sync uit voor de prospect- of klantfilter.');
+ const column=filter.relationshipType==='prospect'?'idprospect':'klcleunik';
+ if(!columns.some(c=>c.toLowerCase()===column))throw new BadRequestException('Het prospect- of klantnummerveld ontbreekt in de gemelde PROJ-tabel.');
 }
 function statuses(input:unknown):{code:string;label:string}[]|undefined{
  if(input===undefined)return undefined;
@@ -60,7 +71,8 @@ export async function exchangeReaderConfig(companyCode:string,input:unknown){
   await prisma.qboxReaderConfig.updateMany({where:{companyCode,OR:[{appliedRevision:null},{appliedRevision:{lt:report.appliedRevision}}]},data:{appliedRevision:report.appliedRevision}});
  const filter=projectFilter(config.projectFilter);
  if(filter&&!supportsProjectFilter(report.readerVersion))throw new ConflictException('Deze projectselectie vereist reader 3.3 of nieuwer.');
- return {revision:config.revision,selectedColumns:config.selectedColumns,projectFilter:filter,minimumReaderVersion:filter?'3.3':'3.2'};
+ validateRelationshipFilter(filter,report.readerVersion,report.columns);
+ return {revision:config.revision,selectedColumns:config.selectedColumns,projectFilter:filter,minimumReaderVersion:filter?.relationshipType?'3.5':filter?'3.3':'3.2'};
 }
 export async function saveReaderConfig(companyCode:string,input:unknown){
  const b=input as {selectedColumns?:unknown;revision?:unknown;projectFilter?:unknown};
@@ -71,6 +83,7 @@ export async function saveReaderConfig(companyCode:string,input:unknown){
   if(!current?.schemaReportedAt)throw new ConflictException('Werk eerst de reader bij en voer een sync uit om beschikbare kolommen op te vragen.');
   const filter=projectFilter(b.projectFilter===undefined?current.projectFilter:b.projectFilter);
   if(filter&&!supportsProjectFilter(current.readerVersion??''))throw new ConflictException('Werk eerst de Q-box bij naar reader 3.3 en voer een sync uit.');
+  validateRelationshipFilter(filter,current.readerVersion??'',current.schemaColumns);
   const known=statuses(current.availableStatuses??[])??[];
   if(filter?.statusCodes.some(code=>!known.some(s=>s.code===code)))throw new BadRequestException('Een gekozen status komt niet voor in de gemelde Plenion-statussen.');
   const available=new Set(current.schemaColumns.map(c=>c.toLowerCase()));

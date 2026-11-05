@@ -1,27 +1,31 @@
 export type Box={x:number;y:number;width:number;height:number};
 export type Match={x:number;y:number;width:number;height:number;score:number};
-export type MatchInput={width:number;height:number;pixels:Uint8ClampedArray;template:Box;region:Box;threshold:number;rotations:boolean};
+export type SymbolSample={width:number;height:number;pixels:Uint8ClampedArray};
+export type MatchInput={width:number;height:number;pixels:Uint8ClampedArray;template:Box;region:Box;threshold:number;rotations:boolean;sample?:SymbolSample};
 export function boxFromPoints(a:{x:number;y:number},b:{x:number;y:number}):Box{return {x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)};}
 /** Local binary template matching. Scores are resemblance, not probabilities. */
 export function matchSymbols(input:MatchInput,progress:(n:number)=>void=()=>{}):Match[]{
  const {width:w,height:h,pixels,threshold,rotations}=input;
  const clamp=(b:Box)=>{const x=Math.max(0,Math.round(b.x)),y=Math.max(0,Math.round(b.y));return {x,y,width:Math.min(w-x,Math.round(b.width)),height:Math.min(h-y,Math.round(b.height))};};
- const t=clamp(input.template),region=clamp(input.region);
+ const sample=input.sample;
+ const t=sample?{x:0,y:0,width:sample.width,height:sample.height}:clamp(input.template),region=clamp(input.region);
+ const source=sample?.pixels??pixels,sourceWidth=sample?.width??w;
  if(t.width<6||t.height<6||t.width>160||t.height>160)throw new Error('Kies één symbool, zonder tekst: tussen 6 en 160 beeldpixels breed en hoog. Zoom in om nauwkeurig te selecteren.');
  // Prefer coloured ink when the example contains it, to suppress building outlines.
  let coloured=0,total=0,red=0,green=0,blue=0;
  for(let y=t.y;y<t.y+t.height;y++)for(let x=t.x;x<t.x+t.width;x++){
-  const i=(y*w+x)*4,r=pixels[i],g=pixels[i+1],b=pixels[i+2];
+  const i=(y*sourceWidth+x)*4,r=source[i],g=source[i+1],b=source[i+2];
   if(Math.min(r,g,b)<180){total++;if(Math.max(r,g,b)-Math.min(r,g,b)>35){coloured++;const sum=r+g+b||1;red+=r/sum;green+=g/sum;blue+=b/sum;}}
  }
  const useColor=coloured>=8&&coloured/Math.max(1,total)>.2;
  if(useColor){red/=coloured;green/=coloured;blue/=coloured;}
+ const isInk=(r:number,g:number,b:number)=>{const sum=r+g+b||1;return Number(useColor?Math.min(r,g,b)<210&&Math.max(r,g,b)-Math.min(r,g,b)>25&&Math.hypot(r/sum-red,g/sum-green,b/sum-blue)<.18:(r+g+b)/3<175);};
  const ink=new Uint8Array(w*h);
  for(let p=0;p<w*h;p++){const i=p*4,r=pixels[i],g=pixels[i+1],b=pixels[i+2],sum=r+g+b||1;
   ink[p]=Number(useColor?Math.min(r,g,b)<210&&Math.max(r,g,b)-Math.min(r,g,b)>25&&Math.hypot(r/sum-red,g/sum-green,b/sum-blue)<.18:(r+g+b)/3<175);
  }
  const base=new Uint8Array(t.width*t.height);let count=0;
- for(let y=0;y<t.height;y++)for(let x=0;x<t.width;x++){base[y*t.width+x]=ink[(t.y+y)*w+t.x+x];count+=base[y*t.width+x];}
+ for(let y=0;y<t.height;y++)for(let x=0;x<t.width;x++){const i=((t.y+y)*sourceWidth+t.x+x)*4;base[y*t.width+x]=isInk(source[i],source[i+1],source[i+2]);count+=base[y*t.width+x];}
  if(count<8||count>base.length*.8)throw new Error('Het voorbeeld bevat te weinig herkenbare lijnen of te veel achtergrond. Kies een strakker kader rond één symbool.');
  const near=new Uint8Array(w*h);
  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++)if(ink[y*w+x])for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)near[(y+dy)*w+x+dx]=1;

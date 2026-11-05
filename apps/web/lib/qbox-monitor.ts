@@ -2,7 +2,7 @@
 import {useEffect,useState} from 'react';
 import {request} from './projects';
 export type ReaderEvent={id:string;runId:string;phase:string;observedAt:string;receivedAt:string;readerVersion:string;recordCount:number|null;httpStatus:number|null};
-export type ProjectSelection={statusCodes:string[];outOfWip:'any'|'on'|'off'};
+export type ProjectSelection={statusCodes:string[];outOfWip:'any'|'on'|'off';relationshipType?:'any'|'prospect'|'customer'};
 export type ReaderConfiguration={syncRequestId:string|null;syncAcknowledgedId:string|null;syncRequestedAt:string|null;commandPollAt:string|null;projectFilter:ProjectSelection|null;availableStatuses:{code:string;label:string}[]|null;revision:number;appliedRevision:number|null;selectedColumns:string[];schemaColumns:string[];schemaReportedAt:string|null;readerVersion:string|null};
 export type Monitor={configuration:ReaderConfiguration|null;extraColumns:{source:string;label:string;group:string}[];state:string;lastContactAt:string|null;lastImport:{receivedAt:string;sourceObservedAt:string;projectCount:number;contractVersion:number;sourceKind:string}|null;events:ReaderEvent[];expectedIntervalMinutes:number;columns:{source:string;field:string}[];columnSelectionEnabled:boolean;exportSchemaVersion:number};
 export const stateLabels:Record<string,string>={unknown:'Status nog niet beschikbaar',stale:'Geen recente melding',error:'Laatste poging mislukt',interrupted:'Afronding niet bevestigd',running:'Synchronisatie bezig',healthy:'Laatste sync geslaagd'};
