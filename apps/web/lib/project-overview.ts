@@ -1,5 +1,6 @@
 export type OverviewProject = {
   companyName?:string;
+  sourceExtraFields?:Record<string,string|null>|null;
   name: string; customer: string; owner: string; status: string;
   sourceDates?: Record<string,string|null>|null;
   dueDate?:string|null;
@@ -9,7 +10,7 @@ export type OverviewProject = {
   sourceStatusLabel?: string | null; sourceIsClosed?: boolean | null;
   externalSource?: string | null; externalId?: string | null;
 };
-export type ProjectFilters = {query: string; status: string; owner: string; source: string; scope?: string; yearFrom?:string; yearTo?:string; includeUnknownYear?:boolean};
+export type ProjectFilters = {query: string; status: string; owner: string; source: string; scope?: string; relationshipType?:'prospect'|'customer'|''; yearFrom?:string; yearTo?:string; includeUnknownYear?:boolean};
 // Use the source project date, never the date an imported project arrived in Portal.
 export function projectDate(p:OverviewProject):string|null {
   const value=p.externalSource === 'PLENION' ? p.sourceDates?.created_date
@@ -47,10 +48,17 @@ export function projectScope(p: OverviewProject): 'open' | 'closed' | 'unknown' 
   if (['PLENION', 'TEAMLEADER'].includes(p.externalSource || '')) return p.sourceIsClosed === true ? 'closed' : p.sourceIsClosed === false ? 'open' : 'unknown';
   return p.status === 'Afgerond' ? 'closed' : 'open';
 }
+export function projectHasRelationship(p:OverviewProject,type:'prospect'|'customer') {
+  if(p.externalSource!=='PLENION')return false;
+  const column=type==='prospect'?'idprospect':'klcleunik';
+  const value=Object.entries(p.sourceExtraFields??{}).find(([key])=>key.toLowerCase()===column)?.[1]?.trim();
+  return !!value && /^\d+$/.test(value) && /[1-9]/.test(value);
+}
 export function filterProjects<T extends OverviewProject>(projects: T[], filters: ProjectFilters): T[] {
   const query = filters.query.trim().toLocaleLowerCase('nl-BE');
   return projects.filter(p =>
     matchesYear(p,filters) &&
+    (!filters.relationshipType || projectHasRelationship(p,filters.relationshipType)) &&
     (!filters.scope || (filters.scope === "active" ? projectInExecution(p) : projectScope(p) === filters.scope)) &&
     (!filters.status || projectStatus(p) === filters.status) &&
     (!filters.owner || (filters.owner === '__unassigned__' ? !p.owner.trim() : p.owner === filters.owner)) &&

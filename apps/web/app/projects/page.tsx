@@ -34,7 +34,7 @@ export default function ProjectsPage() {
   const resetFilters = () => setFilters({query:"",status:"",owner:"",source:"",scope:"active"});
   const filteredProjects = filterProjects(projects, filters);
   const owners = [...new Set(projects.map(p => p.owner).filter(owner => owner.trim()))].sort((a,b) => a.localeCompare(b,"nl-BE"));
-  const hasFilters = !!(filters.query || filters.status || filters.owner || filters.source || filters.yearFrom || filters.yearTo || filters.scope !== "active");
+  const hasFilters = !!(filters.relationshipType || filters.query || filters.status || filters.owner || filters.source || filters.yearFrom || filters.yearTo || filters.scope !== "active");
   const yearOptions = [...new Set(projects.map(projectYear).filter((year):year is number => year!==null))].sort((a,b)=>b-a);
   const unknownYears = projects.filter(p=>projectYear(p)===null).length;
   const statusOptions = [...new Set(projects.map(projectStatus))].sort((a,b) => a.localeCompare(b,"nl-BE",{numeric:true}));
@@ -205,6 +205,11 @@ export default function ProjectsPage() {
                   {statusOptions.map(value => <option key={value} value={value}>{value}</option>)}
                 </select>
               </label>
+              <label>Prospect of klant
+                <select value={filters.relationshipType||""} onChange={event=>setFilters(current=>({...current,relationshipType:event.target.value as ProjectFilters['relationshipType']}))}>
+                  <option value="">Alle</option><option value="prospect">Prospect</option><option value="customer">Klant</option>
+                </select>
+              </label>
               <label>Verantwoordelijke
                 <select value={filters.owner} onChange={event => setFilters(current => ({...current,owner:event.target.value}))}>
                   <option value="">Iedereen</option><option value="__unassigned__">Nog toe te wijzen</option>
@@ -218,6 +223,7 @@ export default function ProjectsPage() {
               </label>
             </div>
             <p className="muted projects-source-note">Projectjaar: aanmaakdatum in Plenion, startdatum in Teamleader of aanmaakdatum voor handmatige projecten.</p>
+            {filters.relationshipType&&<p className="muted projects-source-note">Deze filter gebruikt de ontvangen prospect- en klantnummers uit Plenion. Projecten zonder ontvangen nummer worden niet getoond. Laat de bijgewerkte Q-box synchroniseren om deze gegevens aan te vullen.</p>}
             {(filters.yearFrom||filters.yearTo)&&unknownYears>0&&<label className="projects-year-unknown"><input type="checkbox" checked={filters.includeUnknownYear===true} onChange={event=>setFilters(current=>({...current,includeUnknownYear:event.target.checked}))}/> Projecten zonder bekend jaar ook tonen ({unknownYears})</label>}
             <div className="projects-results-heading">
               <p role="status" aria-live="polite"><strong>{filteredProjects.length}</strong> van {projects.length} projecten{filters.status && ` · ${filters.status}`}</p>
@@ -230,7 +236,7 @@ export default function ProjectsPage() {
             {filteredProjects.length > 0 ? (
               <div className="projects-table-scroll">
                 <table className="projects-table">
-                  <caption className="projects-visually-hidden">Projecten van het geselecteerde bedrijf, gefilterd op status, verantwoordelijke, bron, projectjaar en zoekterm</caption>
+                  <caption className="projects-visually-hidden">Projecten van het geselecteerde bedrijf, gefilterd op status, verantwoordelijke, bron, prospect of klant, projectjaar en zoekterm</caption>
                   <thead><tr><th scope="col">Project / klant</th><th scope="col">Status</th><th scope="col">Administratief afgesloten</th><th scope="col">Deadline</th><th scope="col">Verantwoordelijke</th><th scope="col">Bron</th><th scope="col"><span className="projects-visually-hidden">Acties</span></th></tr></thead>
                   <tbody>{filteredProjects.map(p => (
                     <tr key={p.id}>

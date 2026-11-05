@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {projectDate, formatProjectDate, projectDateLabel, filterProjects, projectScope, type ProjectFilters} from './project-overview';
+import {projectDate, formatProjectDate, projectDateLabel, filterProjects, projectScope, type ProjectFilters, type OverviewProject} from './project-overview';
 const projects = [
   {name:'Werf 10',customer:'Klant A',owner:'Milan',status:'Actief',externalSource:'PLENION',externalId:'230001'},
   {name:'Werf 2',customer:'Klant B',owner:'',status:'Gepland',externalSource:null,externalId:null},
@@ -60,4 +60,21 @@ test('project dates display the original day, distinguish source dates and rejec
  assert.equal(projectDate({...projects[0],createdAt:'2026-10-30'}),null);
  assert.equal(projectDateLabel({...p,externalSource:'TEAMLEADER'}),'Startdatum');
  assert.equal(projectDateLabel(p),'Aangemaakt');
+});
+
+test('prospect and customer filters use received Plenion numbers and combine with other filters',()=>{
+ const rows:OverviewProject[]=[
+  {...projects[0],name:'Prospect',sourceExtraFields:{IDProsPect:'0042',KLCLEUNIK:'0'}},
+  {...projects[0],name:'Customer',sourceExtraFields:{IDProsPect:null,KLCLEUNIK:'55'}},
+  {...projects[0],name:'Both',sourceExtraFields:{idprospect:'42',klcleunik:'55'}},
+  {...projects[0],name:'Zero',sourceExtraFields:{IDProsPect:'000',KLCLEUNIK:'0'}},
+  {...projects[0],name:'Unknown'},
+  {...projects[0],name:'Invalid',sourceExtraFields:{IDProsPect:'NaN',KLCLEUNIK:'-1'}},
+  {...projects[1],name:'Manual',sourceExtraFields:{IDProsPect:'42',KLCLEUNIK:'55'}},
+ ];
+ assert.deepEqual(filterProjects(rows,{...base,relationshipType:'prospect'}).map(p=>p.name),['Both','Prospect']);
+ assert.deepEqual(filterProjects(rows,{...base,relationshipType:'customer'}).map(p=>p.name),['Both','Customer']);
+ assert.deepEqual(filterProjects(rows,{...base,relationshipType:'customer',query:'customer',owner:'Milan'}).map(p=>p.name),['Customer']);
+ assert.equal(filterProjects(rows,{...base,relationshipType:'customer',source:'PORTAL'}).length,0);
+ assert.equal(filterProjects(rows,{...base,relationshipType:''}).length,7);
 });

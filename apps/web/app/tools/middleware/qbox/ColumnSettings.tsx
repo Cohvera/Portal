@@ -17,6 +17,8 @@ export function ColumnSettings({data,companyCode,canManage,onSaved}:{data:Monito
  const changed=JSON.stringify(selection)!==JSON.stringify(config?.projectFilter??null)||JSON.stringify([...selected].sort())!==JSON.stringify([...(config?.selectedColumns??[])].sort());
  async function save(){
   if(statusMode==='selected'&&!filter.statusCodes.length){setMessage('Kies minstens één status of kies Alle statussen.');return;}
+  if(filter.relationshipType&&!supportsRelationshipFilter){setMessage(`De Q-box meldt reader ${config?.readerVersion??'onbekend'}. Werk ook sync.py bij en voer een sync uit; alleen de Docker-image herbouwen werkt deze versie niet bij.`);return;}
+  if(filter.relationshipType&&!available.has(filter.relationshipType==='prospect'?'idprospect':'klcleunik')){setMessage('Het benodigde prospect- of klantnummerveld is nog niet gemeld. Vernieuw de Q-box-metadata en synchroniseer opnieuw.');return;}
   setBusy(true);setMessage('');
   try{await request(`/api/companies/${encodeURIComponent(companyCode)}/middleware/qbox/columns`,{method:'PUT',body:JSON.stringify({revision:config?.revision,selectedColumns:selected,projectFilter:selection})});onSaved();setMessage('Opgeslagen. De Q-box neemt de keuze over bij de volgende sync.');}
   catch(error){setMessage(error instanceof Error?error.message:'Opslaan mislukt.');}finally{setBusy(false);}
@@ -27,8 +29,10 @@ export function ColumnSettings({data,companyCode,canManage,onSaved}:{data:Monito
  <label>Statussen<select value={statusMode} onChange={e=>{setStatusMode(e.target.value);if(e.target.value==='all')setFilter(f=>({...f,statusCodes:[]}));}}><option value="all">Alle statussen</option><option value="selected">Alleen gekozen statussen</option></select></label>
  {statusMode==='selected'&&<div>{!knownStatuses.length&&<p>Nog geen statuslijst ontvangen. Laat de bijgewerkte Q-box synchroniseren.</p>}{knownStatuses.map(s=><label key={s.code}><input type="checkbox" checked={filter.statusCodes.includes(s.code)} onChange={e=>setFilter(f=>({...f,statusCodes:e.target.checked?[...f.statusCodes,s.code].sort():f.statusCodes.filter(c=>c!==s.code)}))}/>{s.code} · {s.label}</label>)}{filter.statusCodes.filter(c=>!knownStatuses.some(s=>s.code===c)).map(c=><label key={c}><input type="checkbox" checked onChange={()=>setFilter(f=>({...f,statusCodes:f.statusCodes.filter(v=>v!==c)}))}/>{c} · Niet meer in gemelde statuslijst</label>)}</div>}
  <label>Uit WIP<select value={filter.outOfWip} onChange={e=>setFilter(f=>({...f,outOfWip:e.target.value as ProjectSelection['outOfWip']}))}><option value="any">Maakt niet uit (aan en uit)</option><option value="off">Alleen uit</option><option value="on">Alleen aan</option></select></label>
- <label>Prospect of klant<select value={filter.relationshipType??'any'} disabled={!supportsRelationshipFilter} onChange={e=>setFilter(f=>{const {relationshipType,...rest}=f;return e.target.value==='any'?rest:{...rest,relationshipType:e.target.value as 'prospect'|'customer'};})}><option value="any">Alle</option><option value="prospect" disabled={!available.has('idprospect')}>Prospect</option><option value="customer" disabled={!available.has('klcleunik')}>Klant</option></select></label>
- {!supportsRelationshipFilter&&<p>Werk de Q-box bij naar reader 3.5 en synchroniseer om op prospect of klant te filteren.</p>}
+ </fieldset>
+ <fieldset className="qbox-column-group" disabled={busy||!canManage}><legend>Prospect of klant</legend>
+ <label>Relatie<select value={filter.relationshipType??'any'} onChange={e=>setFilter(f=>{const {relationshipType,...rest}=f;return e.target.value==='any'?rest:{...rest,relationshipType:e.target.value as 'prospect'|'customer'};})}><option value="any">Alle</option><option value="prospect">Prospect</option><option value="customer">Klant</option></select></label>
+ {!supportsRelationshipFilter&&<p>De Q-box meldt reader {config?.readerVersion??'onbekend'}. Werk ook het Q-box-script bij en synchroniseer om deze keuze op te slaan. Alleen de Docker-image herbouwen werkt het script niet bij.</p>}
  </fieldset>
  {!supportsFilters&&<p>Projectselectie vereist reader 3.3 of nieuwer. Tot die tijd blijft de bestaande selectie behouden.</p>}
  <p>Projecten buiten deze selectie verdwijnen na de volgende geslaagde sync uit de actuele lijst. Hun gegevens blijven bewaard.</p>
@@ -39,7 +43,8 @@ export function ColumnSettings({data,companyCode,canManage,onSaved}:{data:Monito
  {!canManage&&<p>Je hebt projectbeheerrechten nodig om deze instellingen te wijzigen.</p>}
  {Array.from(new Set(data.extraColumns.map(c=>c.group))).map(group=><fieldset key={group} className="qbox-column-group" disabled={busy||!canManage||!config?.schemaReportedAt}><legend>{group}</legend>{data.extraColumns.filter(c=>c.group===group).map(c=>{
   const present=available.has(c.source.toLowerCase());
-  return <label key={c.source}><input type="checkbox" checked={selected.includes(c.source)} disabled={!present&&!selected.includes(c.source)} onChange={e=>setSelected(old=>e.target.checked?[...old,c.source]:old.filter(v=>v!==c.source))}/><span>{c.label} <code>{c.source}</code>{!present&&<small> · Niet aangetroffen in de gemelde database</small>}</span></label>;
+  const automatic=present&&(major>3||(major===3&&minor>=6))&&['IDProsPect','KLCLEUNIK'].includes(c.source);
+  return <label key={c.source}><input type="checkbox" checked={automatic||selected.includes(c.source)} disabled={automatic||(!present&&!selected.includes(c.source))} onChange={e=>setSelected(old=>e.target.checked?[...old,c.source]:old.filter(v=>v!==c.source))}/><span>{c.label} <code>{c.source}</code>{automatic&&<small> · Automatisch meegestuurd voor de projectfilter</small>}{!present&&<small> · Niet aangetroffen in de gemelde database</small>}</span></label>;
  })}</fieldset>)}
  {canManage&&<button className="primary-button" disabled={busy||!changed||!config?.schemaReportedAt} onClick={save}>{busy?'Opslaan…':'Opslaan'}</button>}
  <p className="muted">Wijzigingen worden na opslaan bij de volgende sync toegepast. Gebruik ‘Nu synchroniseren’ om ze eerder op te halen.</p>
