@@ -101,3 +101,21 @@ test('configuration exchange rejects older readers with an active relationship f
   assert.equal(response.projectFilter?.relationshipType,'customer');
  }finally{[prisma.company.findUnique,prisma.qboxReaderConfig.upsert]=originals as any;}
 });
+
+test('status IDs stay distinct when codes coincide and require reader 3.7',async()=>{
+ const selection={statusCodes:[],statusIds:['200','100'],outOfWip:'any'};
+ assert.deepEqual(projectFilter(selection),{statusCodes:[],outOfWip:'any',statusIds:['100','200']});
+ for(const statusIds of [[100],['100','100'],["100) OR 1=1"],['0']])assert.throws(()=>projectFilter({...selection,statusIds}));
+ assert.throws(()=>projectFilter({...selection,statusCodes:['02']}));
+ const original=prisma.$transaction;let version='3.6';let writes=0;
+ try{
+  (prisma as any).$transaction=async(fn:any)=>fn({qboxReaderConfig:{
+   findUnique:async()=>({schemaReportedAt:new Date(),schemaColumns:[],readerVersion:version,availableStatuses:[{id:'100',code:'02',label:'Offerte A'},{id:'200',code:'02',label:'Offerte B'}]}),
+   updateMany:async(args:any)=>{writes++;assert.deepEqual(args.data.projectFilter.statusIds,['100','200']);return {count:1};},
+  }});
+  const body={revision:0,selectedColumns:[],projectFilter:selection};
+  await assert.rejects(()=>saveReaderConfig('WARCO',body));version='3.7';
+  await assert.rejects(()=>saveReaderConfig('WARCO',{...body,projectFilter:{...selection,statusIds:['999']}}));
+  assert.equal(writes,0);await saveReaderConfig('WARCO',body);assert.equal(writes,1);
+ }finally{prisma.$transaction=original;}
+});

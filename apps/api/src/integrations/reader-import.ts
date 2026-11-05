@@ -71,7 +71,7 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
       }
       dates.invoice_number=string(row.invoice_number ?? "", 100) || null;
     }
-    return {id,number,name,description,code,label,closed,revisionClosed,parentId,isProjectMap,documentType,versionNumber,dates,extraFields:extraFields(row.extra_fields)};
+    return {id,number,name,description,statusId,code,label,closed,revisionClosed,parentId,isProjectMap,documentType,versionNumber,dates,extraFields:extraFields(row.extra_fields)};
   });
   const byId = new Map(rows.map(row => [row.id,row]));
   const children = new Map<string, typeof rows>();
@@ -89,13 +89,13 @@ export function parseReaderImport(companyCode: string, input: unknown, now = Dat
     if (numbers.has(row.number)) return invalid("Meerdere actuele versies voor hetzelfde projectnummer. Controleer de bron.");
     numbers.add(row.number);
     const documents = (children.get(row.id) ?? []).map(child => ({
-      extraFields:child.extraFields, sourceId:child.id, number:child.number, name:child.name, description:child.description,
+      extraFields:child.extraFields, statusId:child.statusId, sourceId:child.id, number:child.number, name:child.name, description:child.description,
       statusCode:child.code, statusLabel:child.label, documentType:child.documentType,
       versionNumber:child.versionNumber, revisionClosed:child.revisionClosed, closed:child.closed, ...(lifecycle ? {dates:child.dates} : {}),
     })).sort((a,b) => a.sourceId.localeCompare(b.sourceId));
     return {...row, documents};
   }).sort((a,b) => a.number.localeCompare(b.number));
-  if(selection&&projects.some(p=>(selection.statusCodes.length&&!selection.statusCodes.includes(p.code))||(selection.outOfWip==='on'&&!p.closed)||(selection.outOfWip==='off'&&p.closed)))return invalid('Hoofdproject valt buiten de opgegeven readerselectie.');
+  if(selection&&projects.some(p=>(selection.statusCodes.length&&!selection.statusCodes.includes(p.code))||(!!selection.statusIds?.length&&!selection.statusIds.includes(p.statusId))||(selection.outOfWip==='on'&&!p.closed)||(selection.outOfWip==='off'&&p.closed)))return invalid('Hoofdproject valt buiten de opgegeven readerselectie.');
   const documentCount = projects.reduce((sum,p)=>sum+p.documents.length,0);
   const skipped = rows.length - projects.length - documentCount;
   const digest = createHash("sha256").update(JSON.stringify({companyCode, observed, grouped, lifecycle, projects,...(selection?{selection,configRevision}:{})})).digest("hex");
@@ -125,7 +125,7 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
     const oldByNumber = new Map(oldProjects.map(p=>[p.externalId,p]));
     const recordChanges = parsed.lifecycle && previous?.contractVersion === 7;
     for (const p of parsed.projects) {
-      const source = {sourceExtraFields:p.extraFields,sourceRecordId:p.id, sourceStatusLabel:p.label, sourceIsClosed:p.closed,
+      const source = {sourceExtraFields:{...p.extraFields,STAT:p.statusId},sourceRecordId:p.id, sourceStatusLabel:p.label, sourceIsClosed:p.closed,
         sourceOutOfSelectionAt:null, sourceIsActive:!p.closed && profiles[companyCode].includes(p.code), sourceDescription:p.description, sourceSeenAt:parsed.observed,
         ...(parsed.grouped ? {sourceParentRecordId:null, sourceDocuments:p.documents} : {}),
         ...(parsed.lifecycle ? {sourceStatusCode:p.code,sourceDates:p.dates,sourcePlannedAt:p.dates.planned_date ? new Date(p.dates.planned_date.slice(0,10)) : null} : {})};

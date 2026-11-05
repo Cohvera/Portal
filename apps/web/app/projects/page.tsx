@@ -8,7 +8,7 @@ import {
   request,
   type Project,
 } from "../../lib/projects";
-import { projectDate, projectDateLabel, formatProjectDate, projectYear, filterProjects, projectScope, projectStatus, projectInExecution, projectExplanation, type ProjectFilters } from "../../lib/project-overview";
+import { projectDate, projectDateLabel, formatProjectDate, projectYear, filterProjects, projectScope, projectStatus, projectStatusFilterValue, projectInExecution, projectExplanation, type ProjectFilters } from "../../lib/project-overview";
 import "./projects.css";
 import { projectsCsv } from "../../lib/project-csv";
 import { ProjectStatusHelp } from "./ProjectStatusHelp";
@@ -37,7 +37,7 @@ export default function ProjectsPage() {
   const hasFilters = !!(filters.relationshipType || filters.query || filters.status || filters.owner || filters.source || filters.yearFrom || filters.yearTo || filters.scope !== "active");
   const yearOptions = [...new Set(projects.map(projectYear).filter((year):year is number => year!==null))].sort((a,b)=>b-a);
   const unknownYears = projects.filter(p=>projectYear(p)===null).length;
-  const statusOptions = [...new Set(projects.map(projectStatus))].sort((a,b) => a.localeCompare(b,"nl-BE",{numeric:true}));
+  const statusOptions = [...new Map(projects.map(p=>[projectStatusFilterValue(p),{value:projectStatusFilterValue(p),label:projectStatus(p)+(p.externalSource==="PLENION"&&p.sourceExtraFields?.STAT?` · ID ${p.sourceExtraFields.STAT}`:"")+(companyCode===ALL_COMPANIES&&p.externalSource==="PLENION"?` · ${p.companyName??p.companyCode??""}`:"")}])).values()].sort((a,b)=>a.label.localeCompare(b.label,"nl-BE",{numeric:true}));
   const [plenion, setPlenion] = useState<{connected:boolean; stale:boolean; sourceObservedAt?:string; projectCount?:number} | null>(null);
   useEffect(() => {
     setPlenion(null);
@@ -200,9 +200,9 @@ export default function ProjectsPage() {
                 </select>
               </label>
               <label>Status
-                <select value={filters.status} onChange={event => setFilters(current => ({...current,status:event.target.value}))}>
+                <select value={filters.status} onChange={event => setFilters(current => ({...current,status:event.target.value,...(event.target.value?{scope:""}:{})}))}>
                   <option value="">Alle statussen</option>
-                  {statusOptions.map(value => <option key={value} value={value}>{value}</option>)}
+                  {statusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </label>
               <label>Prospect of klant
@@ -226,7 +226,7 @@ export default function ProjectsPage() {
             {filters.relationshipType&&<p className="muted projects-source-note">Deze filter gebruikt de ontvangen prospect- en klantnummers uit Plenion. Projecten zonder ontvangen nummer worden niet getoond. Laat de bijgewerkte Q-box synchroniseren om deze gegevens aan te vullen.</p>}
             {(filters.yearFrom||filters.yearTo)&&unknownYears>0&&<label className="projects-year-unknown"><input type="checkbox" checked={filters.includeUnknownYear===true} onChange={event=>setFilters(current=>({...current,includeUnknownYear:event.target.checked}))}/> Projecten zonder bekend jaar ook tonen ({unknownYears})</label>}
             <div className="projects-results-heading">
-              <p role="status" aria-live="polite"><strong>{filteredProjects.length}</strong> van {projects.length} projecten{filters.status && ` · ${filters.status}`}</p>
+              <p role="status" aria-live="polite"><strong>{filteredProjects.length}</strong> van {projects.length} projecten{filters.status && ` · ${statusOptions.find(option=>option.value===filters.status)?.label??filters.status}`}</p>
               <div className="projects-export-actions">
                 <button type="button" className="secondary-button" disabled={loading || !!error || !filteredProjects.length} onClick={exportCsv} title="Download de projecten volgens de huidige filters">CSV exporteren ({filteredProjects.length})</button>
                 {hasFilters && <button type="button" className="secondary-button" onClick={resetFilters}>Filters wissen</button>}

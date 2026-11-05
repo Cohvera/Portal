@@ -247,3 +247,12 @@ test('lost offer 1809629 remains under its project even when selection only incl
  assert.equal(parsed.projects[0].documents[0].number,'1809629');
  assert.equal(parsed.projects[0].documents[0].statusCode,'14');
 });
+
+test('ID selection validates parent STAT even when status codes are identical',()=>{
+ const root={...row,status_id:'100',status_code:'02',parent_source_id:'0',is_project_map:'1'};
+ const child={...row,source_id:'13',number:'2',status_id:'200',status_code:'02',parent_source_id:'12',is_project_map:'0'};
+ const body={...batch(),schema_version:3,count:2,projects:[root,child],selection:{statusCodes:[],statusIds:['100'],outOfWip:'any'},config_revision:1};
+ const parsed=parseReaderImport('WARCO',body);
+ assert.equal(parsed.projects[0].statusId,'100');assert.equal(parsed.projects[0].documents.length,1);
+ assert.throws(()=>parseReaderImport('WARCO',{...body,selection:{...body.selection,statusIds:['200']}}));
+});

@@ -1,5 +1,5 @@
 export type OverviewProject = {
-  companyName?:string;
+  companyName?:string; companyCode?:string;
   sourceExtraFields?:Record<string,string|null>|null;
   name: string; customer: string; owner: string; status: string;
   sourceDates?: Record<string,string|null>|null;
@@ -44,6 +44,10 @@ function matchesYear(p:OverviewProject,filters:ProjectFilters){
 export function projectStatus(p: OverviewProject) {
   return ['PLENION', 'TEAMLEADER'].includes(p.externalSource || '') ? p.sourceStatusLabel || p.status : p.status;
 }
+export function projectStatusFilterValue(p:OverviewProject):string {
+  const id=p.externalSource==='PLENION'?p.sourceExtraFields?.STAT:null;
+  return id?`PLENION:${p.companyCode??''}:${id}`:projectStatus(p);
+}
 export function projectScope(p: OverviewProject): 'open' | 'closed' | 'unknown' {
   if (['PLENION', 'TEAMLEADER'].includes(p.externalSource || '')) return p.sourceIsClosed === true ? 'closed' : p.sourceIsClosed === false ? 'open' : 'unknown';
   return p.status === 'Afgerond' ? 'closed' : 'open';
@@ -60,7 +64,7 @@ export function filterProjects<T extends OverviewProject>(projects: T[], filters
     matchesYear(p,filters) &&
     (!filters.relationshipType || projectHasRelationship(p,filters.relationshipType)) &&
     (!filters.scope || (filters.scope === "active" ? projectInExecution(p) : projectScope(p) === filters.scope)) &&
-    (!filters.status || projectStatus(p) === filters.status) &&
+    (!filters.status || (projectStatusFilterValue(p) === filters.status || projectStatus(p) === filters.status)) &&
     (!filters.owner || (filters.owner === '__unassigned__' ? !p.owner.trim() : p.owner === filters.owner)) &&
     (!filters.source || (filters.source === 'PORTAL' ? !p.externalSource : p.externalSource === filters.source)) &&
     (!query || [p.name,p.customer,p.owner,p.externalId || ''].some(value => value.toLocaleLowerCase('nl-BE').includes(query)))

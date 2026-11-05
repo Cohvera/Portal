@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {projectDate, formatProjectDate, projectDateLabel, filterProjects, projectScope, type ProjectFilters, type OverviewProject} from './project-overview';
+import {projectDate, formatProjectDate, projectDateLabel, filterProjects, projectScope, projectStatusFilterValue, type ProjectFilters, type OverviewProject} from './project-overview';
 const projects = [
   {name:'Werf 10',customer:'Klant A',owner:'Milan',status:'Actief',externalSource:'PLENION',externalId:'230001'},
   {name:'Werf 2',customer:'Klant B',owner:'',status:'Gepland',externalSource:null,externalId:null},
@@ -77,4 +77,15 @@ test('prospect and customer filters use received Plenion numbers and combine wit
  assert.deepEqual(filterProjects(rows,{...base,relationshipType:'customer',query:'customer',owner:'Milan'}).map(p=>p.name),['Customer']);
  assert.equal(filterProjects(rows,{...base,relationshipType:'customer',source:'PORTAL'}).length,0);
  assert.equal(filterProjects(rows,{...base,relationshipType:''}).length,7);
+});
+
+test('overview status selection uses source ID and company instead of shared labels',()=>{
+ const rows:OverviewProject[]=[
+  {...projects[0],name:'Offer A',companyCode:'WARCO',sourceStatusLabel:'02 - Offerte',sourceExtraFields:{STAT:'100'},sourceIsActive:false},
+  {...projects[0],name:'Offer B',companyCode:'WARCO',sourceStatusLabel:'02 - Offerte',sourceExtraFields:{STAT:'200'},sourceIsActive:false},
+  {...projects[0],name:'Other company',companyCode:'QHOME',sourceStatusLabel:'02 - Offerte',sourceExtraFields:{STAT:'100'},sourceIsActive:false},
+ ];
+ const status=projectStatusFilterValue(rows[0]);
+ assert.deepEqual(filterProjects(rows,{...base,status,scope:''}).map(p=>p.name),['Offer A']);
+ assert.equal(filterProjects(rows,{...base,status,scope:'active'}).length,0);
 });
