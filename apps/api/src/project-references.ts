@@ -18,7 +18,32 @@ const fields = {
   owner: true,
   status: true,
   statusColor: true,
+  externalId: true,
+  externalSource: true,
+  sourceExtraFields: true,
 } as const;
+function projectReference(project: {
+  id: string;
+  name: string;
+  owner: string;
+  status: string;
+  statusColor: string;
+  externalId: string | null;
+  externalSource: string | null;
+  sourceExtraFields: unknown;
+}, companyCode: string): ProjectReferenceV1 {
+  const {externalId, externalSource, sourceExtraFields, ...fields} = project;
+  const extra = sourceExtraFields && typeof sourceExtraFields === "object" && !Array.isArray(sourceExtraFields)
+    ? sourceExtraFields as Record<string, unknown> : {};
+  const reference = externalSource === "TEAMLEADER" && typeof extra.reference === "string"
+    ? extra.reference : externalId;
+  return {
+    ...fields,
+    companyCode,
+    reference: reference?.trim().slice(0, 100) || null,
+    street: typeof extra.A_Adres === "string" ? extra.A_Adres.trim().slice(0, 200) || null : null,
+  };
+}
 /** Read-only, session authenticated and company-scoped by the global guard. */
 @Controller("v1/companies/:companyCode/projects")
 export class ProjectReferencesController {
@@ -46,7 +71,7 @@ export class ProjectReferencesController {
       orderBy: { id: "asc" },
       take: 101,
     });
-    const projects = rows.slice(0, 100).map((p) => ({ ...p, companyCode }));
+    const projects = rows.slice(0, 100).map((p) => projectReference(p, companyCode));
     return {
       version: 1,
       projects,
@@ -64,6 +89,6 @@ export class ProjectReferencesController {
     });
     if (!project)
       throw new NotFoundException("Project niet gevonden binnen dit bedrijf.");
-    return { ...project, companyCode };
+    return projectReference(project, companyCode);
   }
 }

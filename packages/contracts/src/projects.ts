@@ -3,6 +3,8 @@ export interface ProjectReferenceV1 {
   id: string;
   companyCode: string;
   name: string;
+  reference?: string | null;
+  street?: string | null;
   owner: string;
   status: string;
   statusColor: string;
