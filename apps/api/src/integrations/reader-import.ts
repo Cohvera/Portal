@@ -145,15 +145,21 @@ export async function importReaderProjects(companyCode: string, input: unknown) 
       }
       oldByNumber.delete(p.number);
     }
-    if (parsed.grouped) {
-      for (const p of parsed.projects) {
-        // Keep old project IDs, tasks and warehouse references; only hide proven children from lists.
-        const childIds = p.documents.map(d => d.sourceId);
-        if (childIds.length) await tx.project.updateMany({
-          where:{companyId:company.id,externalSource:"PLENION",sourceRecordId:{in:childIds}},
-          data:{sourceParentRecordId:p.id},
-        });
-      }
+    if (parsed.documentCount) {
+      // Keep old project IDs, tasks and warehouse references; only hide proven children from lists.
+      const childLinks = parsed.projects.flatMap(project => project.documents.map(document => ({
+        child_id: document.sourceId,
+        parent_id: project.id,
+      })));
+      await tx.$executeRaw`
+        UPDATE "Project" AS project
+        SET "sourceParentRecordId" = links.parent_id
+        FROM jsonb_to_recordset(${JSON.stringify(childLinks)}::jsonb) AS links(child_id text, parent_id text)
+        WHERE project."companyId" = ${company.id}
+          AND project."externalSource" = 'PLENION'
+          AND project."sourceRecordId" = links.child_id
+          AND project."sourceParentRecordId" IS DISTINCT FROM links.parent_id
+      `;
     }
     // Record only transitions from the previous accepted selection. Do not date
     // already historical records as newly closed when this feature is deployed.

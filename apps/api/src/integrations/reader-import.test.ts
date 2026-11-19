@@ -64,19 +64,28 @@ test("reimport marks old child projects without deleting data or moving other co
   const { prisma } = await import("@cohvera/database");
   const { importReaderProjects } = await import("./reader-import");
   const original = prisma.$transaction;
-  const updates:any[] = [], roots:any[] = [];
+  const queries: {sql: string; params: unknown[]}[] = [], roots:any[] = [];
+  const otherParent = {...parent,source_id:"55",number:"999"};
+  const otherChild = {...child,source_id:"56",parent_source_id:otherParent.source_id};
   try {
     (prisma as any).$transaction = async (run:any) => run({
-      $executeRaw:async()=>1, company:{findUnique:async()=>({id:"qhome-id",isActive:true})},
+      $executeRaw:async(parts:TemplateStringsArray,...params:unknown[])=>{queries.push({sql:parts.join("?"),params});return 1;},
+      company:{findUnique:async()=>({id:"qhome-id",isActive:true})},
       qboxReaderConfig:{findUnique:async()=>null},
       qboxImport:{findUnique:async()=>null,upsert:async()=>({})},
-      project:{upsert:async(args:any)=>{roots.push(args);},updateMany:async(args:any)=>{updates.push(args);}},
+      project:{upsert:async(args:any)=>{roots.push(args);}},
     });
-    const result = await importReaderProjects("QHOME",groupedBatch([parent,child]));
-    assert.equal(result.count,1); assert.equal(result.documentCount,1);
+    const result = await importReaderProjects("QHOME",groupedBatch([parent,child,otherParent,otherChild]));
+    assert.equal(result.count,2); assert.equal(result.documentCount,2);
     assert.equal(roots[0].update.sourceDocuments[0].sourceId,child.source_id);
     assert.equal(roots[0].update.sourceParentRecordId,null);
-    assert.deepEqual(updates[0],{where:{companyId:"qhome-id",externalSource:"PLENION",sourceRecordId:{in:[child.source_id]}},data:{sourceParentRecordId:parent.source_id}});
+    const updates = queries.filter(query => query.sql.includes('UPDATE "Project"'));
+    assert.equal(updates.length, 1);
+    assert.match(updates[0].sql, /project\."companyId" = \?\s+AND project\."externalSource" = 'PLENION'/);
+    assert.deepEqual(updates[0].params, [JSON.stringify([
+      {child_id:child.source_id,parent_id:parent.source_id},
+      {child_id:otherChild.source_id,parent_id:otherParent.source_id},
+    ]), "qhome-id"]);
   } finally {prisma.$transaction = original;}
 });
 
