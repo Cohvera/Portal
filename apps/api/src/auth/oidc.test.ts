@@ -141,14 +141,14 @@ test("geen rol en vreemde tenant/object worden geweigerd na protocolvalidatie", 
   );
 });
 
-test("Entra-configuratie weigert onveilige callbacks en onbegrensde sessies",async()=>{
+test("Entra-configuratie weigert onveilige callbacks; de oude sessietimer is niet meer actief",async()=>{
  const {entraSettings}=await import("./config");const keys=["ENTRA_TENANT_ID","ENTRA_CLIENT_ID","ENTRA_CLIENT_SECRET","ENTRA_REDIRECT_URI","ENTRA_SESSION_MINUTES","NODE_ENV"];
  const old=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
  try{Object.assign(process.env,{ENTRA_TENANT_ID:tenant,ENTRA_CLIENT_ID:clientId,ENTRA_CLIENT_SECRET:"synthetic",ENTRA_REDIRECT_URI:"https://portal.example/auth/callback",ENTRA_SESSION_MINUTES:"15",NODE_ENV:"production"});assert.equal(entraSettings().secure,true);
   process.env.ENTRA_REDIRECT_URI="http://portal.example/auth/callback";assert.throws(()=>entraSettings());
   process.env.ENTRA_REDIRECT_URI="http://localhost:3000/auth/callback";assert.throws(()=>entraSettings());
   process.env.NODE_ENV="development";assert.equal(entraSettings().secure,false);
-  process.env.ENTRA_SESSION_MINUTES="999";assert.throws(()=>entraSettings());
+  process.env.ENTRA_SESSION_MINUTES="15";assert.equal("sessionMs" in entraSettings(),false);
  }finally{for(const k of keys){if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k];}}
 });
 

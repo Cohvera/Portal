@@ -5,7 +5,7 @@ import { prisma, Prisma } from "@cohvera/database";
 import { authMode, entraSettings } from "./config";
 import { allowedCompanies, context } from "./context";
 import { isPortalAdmin, identityClaims } from "./policy";
-import { cookie, hashToken, opaqueToken } from "./session";
+import { cookie, hashToken, opaqueToken, sessionCookieOptions } from "./session";
 import { companyAccess, syncCompanyAccess } from "./groups";
 let configuration: Promise<oidc.Configuration> | undefined;
 export function oidcConfiguration() {
@@ -180,17 +180,14 @@ export class AuthController {
               },
             });
         await syncCompanyAccess(tx, user.id, access);
-        // A fresh login replaces older sessions and their previous role claims.
-        await tx.portalSession.deleteMany({ where: { userId: user.id } });
+        // Other browsers stay signed in; replace only this browser’s previous session below.
         await tx.portalSession.create({
           data: {
             tokenHash: hashToken(sessionToken),
             userId: user.id,
             roles: identity.roles,
             tenantId: identity.tenantId,
-            expiresAt: new Date(
-              Math.min(identity.expiresAt, Date.now() + s.sessionMs),
-            ),
+            expiresAt: null,
           },
         });
         const coh = await tx.company.findUnique({ where: { code: "COH" } });
@@ -211,10 +208,7 @@ export class AuthController {
         await prisma.portalSession.deleteMany({
           where: { tokenHash: hashToken(previous) },
         });
-      res.cookie("cohvera_session", sessionToken, {
-        ...cookieOptions(),
-        maxAge: Math.min(identity.expiresAt - Date.now(), s.sessionMs),
-      });
+      res.cookie("cohvera_session", sessionToken, sessionCookieOptions());
       return res.redirect("/");
     } catch (e) {
       const message = e instanceof Error ? e.message : "";

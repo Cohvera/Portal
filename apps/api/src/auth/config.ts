@@ -49,11 +49,6 @@ export function entraSettings() {
     throw new ServiceUnavailableException(
       "Gebruik een veilige callback-URL met pad /auth/callback.",
     );
-  const minutes = Number(process.env.ENTRA_SESSION_MINUTES || 15);
-  if (!Number.isInteger(minutes) || minutes < 5 || minutes > 60)
-    throw new ServiceUnavailableException(
-      "ENTRA_SESSION_MINUTES moet tussen 5 en 60 liggen.",
-    );
   return {
     tenant: tenant.toLowerCase(),
     clientId,
@@ -61,7 +56,6 @@ export function entraSettings() {
     redirect: url.href,
     origin: url.origin,
     secure: url.protocol === "https:",
-    sessionMs: minutes * 60000,
   };
 }
 export function publicOrigin() {

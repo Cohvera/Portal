@@ -28,7 +28,7 @@ De voorgestelde aanmeldroute is Authorization Code Flow met OpenID Connect. Toke
 - `/auth/login`, `/auth/callback`, `/auth/logout`: server-side OIDC-flow met `openid-client` 6, PKCE S256, state, nonce en expliciete JWS-handtekeningcontrole.
 - Validatie van issuer, audience, lifetime (incl. not-before), tenant-ID, object-ID en exacte Portal.User/Portal.Admin-waarden. Geen eigen JWT-validator.
 - Server-side sessies in PostgreSQL. De browser ontvangt alleen een willekeurige HttpOnly-cookie met SameSite=Lax en Secure bij HTTPS. Alleen een SHA-256-hash van het sessiegeheim staat in de database. Access-/refresh-/ID-tokens worden niet opgeslagen of naar de frontend gestuurd.
-- Sessielevensduur standaard 15 minuten, maximaal de ID-tokenlevensduur. Geen stilzwijgende sessieverlenging: opnieuw aanmelden haalt nieuwe rollen op. Entra-groepswijzigingen worden zichtbaar na verversing bij Microsoft en nieuwe aanmelding; dit is geen onmiddellijke groepsrevocatie via Graph.
+- Server-side sessies hebben geen automatische eindtijd en zijn onafhankelijk van de levensduur van het Microsoft ID-token na de gecontroleerde aanmelding. De browsercookie wordt bij gebruik telkens voor 400 dagen vernieuwd en blijft over browserherstarts heen bewaard. Zelf uitloggen of intrekken van de sessie beëindigt de login. Browsergegevens wissen of het verstrijken van de browsercookie na langdurig niet-gebruik vereist opnieuw aanmelden. Entra-groepswijzigingen worden zichtbaar bij een nieuwe aanmelding; dit is geen onmiddellijke groepsrevocatie via Graph.
 - Logout trekt de lokale sessie in en verwijst vervolgens naar Microsoft logout. Businessrollen worden bij elke aanvraag uit de database gelezen.
 - Globale API-beveiliging. Alleen health, loginconfiguratie, loginstart en callback zijn openbaar. Geen spoofbare identityheaders of plugin-admin-token als alternatieve beheerroute.
 - Origincontrole voor wijzigingen, alleen JSON voor gewone mutaties, `Cache-Control: no-store` en eenmalige aanmeldpogingen van tien minuten.
@@ -78,7 +78,7 @@ ENTRA_GROUP_MAPPINGS='[{"groupName":"SG-TOMME-All","companyCode":"TOMME","roleKe
 
 Bedrijfscodes: `COH`, `TOMME`, `QHOME`, `WARCO`. Bedrijfsrollen: `viewer`, `employee`, `manager`, `company-admin`. Bij meerdere rollen voor hetzelfde bedrijf geldt de hoogste in deze volgorde. Eén groep kan meerdere koppelingen hebben. Geen bedrijfsrol geeft Portal.Admin: die blijft apart in Entra toegekend.
 
-Elke geldige login vervangt alle lokale bedrijfstoewijzingen door de overeenkomstige Entra-groepen. Geen passende groep (of geen groepsclaim) betekent geen bedrijfstoegang, ook voor Portal.Admin. Verwijderde groepskoppelingen worden dus bij de volgende login ingetrokken. Oude sessies worden bij opnieuw aanmelden ingetrokken. Reeds actieve sessies blijven anders maximaal hun ingestelde levensduur geldig; dit is geen continue Graph-synchronisatie.
+Elke geldige login vervangt alle lokale bedrijfstoewijzingen door de overeenkomstige Entra-groepen. Geen passende groep (of geen groepsclaim) betekent geen bedrijfstoegang, ook voor Portal.Admin. Verwijderde groepskoppelingen worden dus bij de volgende login ingetrokken. Bij opnieuw aanmelden wordt alleen de eerdere sessie van dezelfde browser vervangen. Sessies op andere toestellen blijven geldig tot uitloggen of intrekken; dit is geen continue Graph-synchronisatie. De lokale accountstatus en bedrijfsrechten worden per aanvraag gecontroleerd.
 
 Een expliciet lege lijst (`[]`) geeft geen bedrijven. Ongeldige JSON, onbekende bedrijfs-/rolconfiguratie voor een match en onvolledige groepsclaims door een Microsoft-overagelimiet blokkeren de login. Er is geen Graph-fallback of extra Graph-permissie nodig voor de ondersteunde tokenroute. Configureer mappings en groepsclaim **vóór deployment**, zodat gebruikers na opnieuw aanmelden hun bedrijfstoegang behouden.
 
@@ -94,7 +94,6 @@ ENTRA_TENANT_ID=<Directory Tenant ID>
 ENTRA_CLIENT_ID=<Application Client ID>
 ENTRA_CLIENT_SECRET=<Client secret VALUE>
 ENTRA_REDIRECT_URI=https://portal.cohvera.be/auth/callback
-ENTRA_SESSION_MINUTES=15
 ```
 
 Het client secret blijft uitsluitend bij de API. De oudere AZURE_AD_TENANT_ID/CLIENT_ID/CLIENT_SECRET-namen worden als terugval geaccepteerd; gebruik bij voorkeur één set. Zorg voor een rotatieprocedure. Deze implementatie ondersteunt een client secret; certificate/federated credentials uit de voorkeursrichting van de PDF zijn nog geen geïmplementeerde credentialvariant.
@@ -135,3 +134,7 @@ pnpm --filter @cohvera/web build
 Tests omvatten rollen A-D, cryptografisch gesigneerde OIDC-responses en weigering van verkeerde handtekening/issuer/audience/expiry/not-before/state/nonce, bedrijfsafscherming, directe beheer-URL's, verlopen en gedeactiveerde sessies en CSRF. Een geslaagde test met een nagebootste provider is geen bewijs dat de echte Microsoft App Registration correct staat.
 
 Bronnen: aangeleverde Cohvera Portal Entra ID RBAC-nota v1.0 (september 2026), Microsoft ID-token-claimsdocumentatie en de officiële openid-client documentatie.
+
+### Persistente sessies uitrollen
+
+Voer migratie `20261105120000_persistent_portal_sessions` uit en herstart de bijgewerkte API. Deze verwijdert de eindtijd van nog geldige sessies; al verlopen sessies worden niet hersteld. De browsercookie krijgt de lange levensduur bij het eerstvolgende geauthenticeerde API-verzoek. Een al verlopen cookie vereist één nieuwe aanmelding. De oude instelling `ENTRA_SESSION_MINUTES` wordt niet meer gebruikt. Er worden geen Microsoft-tokens langdurig opgeslagen.

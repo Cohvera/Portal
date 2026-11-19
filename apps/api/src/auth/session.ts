@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { prisma } from "@cohvera/database";
 import { actorInclude, AuthContext, developmentContext } from "./context";
 import { authMode, entraSettings } from "./config";
@@ -16,7 +16,15 @@ export function cookie(req: Request, name: string) {
   const value = values[0].slice(name.length + 1);
   return /^[A-Za-z0-9_-]{43}$/.test(value) ? value : "";
 }
-export async function requestContext(req: Request): Promise<AuthContext> {
+// Renew browser persistence on use; the server session itself has no timeout.
+export const sessionCookieOptions = () => ({
+  httpOnly: true,
+  secure: entraSettings().secure,
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 400 * 86400000,
+});
+export async function requestContext(req: Request, res?: Response): Promise<AuthContext> {
   if (authMode() === "development") return developmentContext();
   const empty: AuthContext = { actor: null, roles: [], mode: "entra" };
   const token = cookie(req, "cohvera_session");
@@ -28,13 +36,15 @@ export async function requestContext(req: Request): Promise<AuthContext> {
     });
   if (
     !s ||
-    s.expiresAt <= new Date() ||
+    (s.expiresAt !== null && s.expiresAt <= new Date()) ||
     !s.user.isActive ||
     !isPortalUser(s.roles) ||
     s.tenantId !== entraSettings().tenant ||
     s.user.entraTenantId !== s.tenantId
   )
     return empty;
+  if (req.path?.replace(/\/$/, "") !== "/auth/logout")
+    res?.cookie("cohvera_session", token, sessionCookieOptions());
   return {
     actor: s.user,
     roles: s.roles,

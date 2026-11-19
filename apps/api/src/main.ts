@@ -435,7 +435,7 @@ export async function configuredApp() {
     if (publicAuthPath(req.path.replace(/\/$/, ""))) return next();
     // Bearer requests are verified independently in the guard, never as a user session.
     if (req.headers["x-teamleader-key"] !== undefined || req.headers.authorization !== undefined || req.headers["x-warehouse-key"] !== undefined || req.headers["x-qbox-key"] !== undefined || req.path === "/integrations/qbox/plenion/projects") return next();
-    void requestContext(req)
+    void requestContext(req, res)
       .then((ctx) => authContext.run(ctx, () => next()))
       .catch(() =>
         res

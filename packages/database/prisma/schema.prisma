@@ -262,7 +262,7 @@ model PortalSession {
   userId String
   roles String[]
   tenantId String
-  expiresAt DateTime
+  expiresAt DateTime?
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([expiresAt])
