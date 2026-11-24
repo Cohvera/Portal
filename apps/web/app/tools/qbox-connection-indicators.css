@@ -1,0 +1,25 @@
+.qbox-connection-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.qbox-connection-indicators li { display: flex; align-items: flex-start; gap: 10px; }
+.qbox-connection-indicators small { display: block; margin-top: 3px; color: #475569; }
+.qbox-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; background: #64748b; }
+.qbox-status-dot-healthy { background: #15803d; }
+.qbox-status-dot-error { background: #b91c1c; }
+.qbox-status-dot-stale { background: #b45309; }
+
+.qbox-catalog-card .catalog-card-top { align-items: flex-start; }
+.qbox-catalog-card .catalog-icon { flex: none; }
+.qbox-catalog-card .qbox-connection-indicators {
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+.qbox-catalog-card .qbox-status-dot { margin-top: 3px; }
+.qbox-catalog-card .qbox-connection-indicators small { margin-top: 2px; font-size: 0.75rem; }

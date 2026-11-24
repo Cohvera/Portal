@@ -4,9 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {request} from '../../../../lib/projects';
 import {connectionDiagnostics,eventExplanation,eventLink,failurePhases,linkLabels,monitorTime,phaseLabels,stepLabels,type Monitor,type ReaderEvent} from '../../../../lib/qbox-monitor';
 import {eventRemedy} from '../../../../lib/qbox-recovery';
-
-const pollLabels = {unknown:'Nog geen contact',healthy:'Qbox haalt aanvragen op',stale:'Geen recente controle',error:'Ophalen mislukt'};
-const hfsqlLabels = {unknown:'Nog geen resultaat',healthy:'HFSQL bereikbaar',stale:'Geen recente meting',error:'HFSQL-stap mislukt'};
+import {hfsqlLabels,pollLabels,QboxConnectionIndicators} from '../../QboxConnectionIndicators';
 
 export function ConnectionDiagnostics({data,companyCode}:{data:Monitor;companyCode:string}) {
  const {pollAt,pollFailure,pollState,upload,hfsql,hfsqlFailed,hfsqlState} = connectionDiagnostics(data);
@@ -22,10 +20,7 @@ export function ConnectionDiagnostics({data,companyCode}:{data:Monitor;companyCo
  });
  const waiting = data.configuration?.syncRequestId && data.configuration.syncRequestId !== data.configuration.syncAcknowledgedId;
  return <section className="card qbox-connection-summary" aria-label="Verbindingsstatus">
-  <ul className="qbox-connection-indicators">
-   <li><span className={`qbox-status-dot qbox-status-dot-${pollState}`} aria-hidden="true"/><div><strong>Portal ↔ Qbox</strong><small>{pollLabels[pollState]}</small></div></li>
-   <li><span className={`qbox-status-dot qbox-status-dot-${hfsqlState}`} aria-hidden="true"/><div><strong>Qbox → HFSQL</strong><small>{hfsqlLabels[hfsqlState]}</small></div></li>
-  </ul>
+  <QboxConnectionIndicators pollState={pollState} hfsqlState={hfsqlState}/>
   <button className="qbox-action qbox-action-primary" type="button" aria-haspopup="dialog" onClick={()=>{
    dialog.current?.showModal();
    setOpen(true);
