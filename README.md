@@ -237,6 +237,14 @@ De bijgewerkte standalone reader rapporteert via `POST /api/integrations/qbox/re
 
 Een succes is een bevestiging op dat moment, geen live ping. Na 35 minuten zonder actuele melding verschijnt een waarschuwing; een gestarte poging zonder afronding wordt na 9 minuten als onbevestigd gemarkeerd. Reader- en uploadfouten zijn zichtbaar als aparte stappen, met HTTP-code indien beschikbaar. Volledige driverlogs blijven op de Q-box. Vertraagd verstuurde meldingen behouden hun oorspronkelijke tijdstip. Retentie wordt per bedrijf opgeruimd bij nieuwe rapportage; de leesroute toont alleen de laatste 30 dagen.
 
+**Verbindingsdiagnose** toont het laatste contact voor sync-aanvragen, de
+laatste upload en het laatste HFSQL-resultaat afzonderlijk. Het log is
+filterbaar op verbinding of fouten en toont, indien beschikbaar, HTTP-status,
+SQLSTATE, native HFSQL-code, `errno`, looptijd en poging-ID. Een tijdelijk
+onbereikbare Portal ontvangt opgeslagen meldingen bij een volgende rapportage.
+Pas migratie `20261124120000_qbox_connection_diagnostics` toe en rol API en web uit
+vóór je de Qbox-reader naar 3.10 bijwerkt. Oudere readers blijven basisstatussen tonen.
+
 De pagina toont de 24 verplichte exportvelden van readercontract v3 en 31 optionele PROJ-velden uit `apps/api/src/integrations/hfsql-columns.json`. De labels zijn gebaseerd op eerder onderzochte databasekolommen, niet op een openbare officiële Plenion-datadictionary. De Q-box meldt de werkelijk aanwezige namen; ontbrekende velden kunnen niet worden geselecteerd. Beheer vereist `projects.manage` binnen het gekozen bedrijf; lezen vereist `projects.read`.
 
 Kolomkeuze vereist migratie `20261023120000_qbox_columns` en reader 3.2. Deploy eerst database/API/web, daarna de reader via `sudo python3 scripts/install_reader.py --target "$HOME/plenion-reader"` vanuit de qbox-connector repository. De reader vraagt de keuze op via het met bedrijfskey beveiligde `POST /api/integrations/qbox/reader-config`. Wijzigingen via `PUT /companies/:companyCode/middleware/qbox/columns` gebruiken een revisienummer tegen gelijktijdig overschrijven. Er wordt geen remote SQL of shellcode gestuurd.

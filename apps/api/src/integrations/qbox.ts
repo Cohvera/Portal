@@ -2,11 +2,28 @@ import {pollReaderCommand} from './qbox-commands';
 import {exchangeReaderConfig} from "./qbox-config";
 import {ingestReaderEvents} from "./qbox-monitor";
 import { importReaderProjects } from "./reader-import";
-import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Headers, Param, Post, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Headers, HttpException, Logger, Param, Post, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { tvTelemetry } from "../tv";
 import { Prisma } from "@cohvera/database";
 import { prisma } from "@cohvera/database";
+
+const readerLog = new Logger("QboxReader");
+
+async function logReaderOperation<T>(operation: string, companyCode: string, id: unknown, work: () => Promise<T>) {
+  const runId = typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ? id : undefined;
+  const started = Date.now();
+  try {
+    const result = await work();
+    if (runId) readerLog.log(JSON.stringify({operation, companyCode, runId, result: "accepted", durationMs: Date.now() - started}));
+    return result;
+  } catch (error) {
+    const code = error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined;
+    readerLog.error(JSON.stringify({operation, companyCode, runId, result: "failed", durationMs: Date.now() - started,
+      httpStatus: error instanceof HttpException ? error.getStatus() : 500, databaseCode: code}));
+    throw error;
+  }
+}
 
 export function verifyQboxKey(value: unknown): string {
   const entries: {key:string; company:string}[] = [];
@@ -83,8 +100,9 @@ export class QboxImportController {
   readerCommand(@Body() body:unknown,@Headers("x-qbox-key") key:unknown){return pollReaderCommand(verifyQboxKey(key),body);}
 
   @Post("reader-config")
-  readerConfig(@Body() body:unknown,@Headers("x-qbox-key") key:unknown){
-    return exchangeReaderConfig(verifyQboxKey(key),body);
+  readerConfig(@Body() body:unknown,@Headers("x-qbox-key") key:unknown,@Headers("x-qbox-run-id") runId?:string){
+    const companyCode = verifyQboxKey(key);
+    return logReaderOperation("reader-config", companyCode, runId, () => exchangeReaderConfig(companyCode, body));
   }
 
   @Post("reader-status")
@@ -93,9 +111,9 @@ export class QboxImportController {
   }
 
   @Post("plenion/reader-projects")
-  async readerProjects(@Body() body: unknown, @Headers("x-qbox-key") key: unknown) {
+  async readerProjects(@Body() body: unknown, @Headers("x-qbox-key") key: unknown, @Headers("x-qbox-run-id") runId?:string) {
     const companyCode = verifyQboxKey(key);
-    const result = await importReaderProjects(companyCode, body);
+    const result = await logReaderOperation("reader-projects", companyCode, runId, () => importReaderProjects(companyCode, body));
     return {accepted:true, companyCode, ...result};
   }
 

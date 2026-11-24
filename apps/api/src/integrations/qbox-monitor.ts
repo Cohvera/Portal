@@ -2,7 +2,34 @@ import {requestReaderSync} from './qbox-commands';
 import {extraColumns,saveReaderConfig} from "./qbox-config";
 import {BadRequestException,Controller,ForbiddenException,Get,Param,Body,Put,Post} from '@nestjs/common';
 import {prisma} from '@cohvera/database';
-const phases=['started','read_ok','configuration_failed','read_failed','upload_failed','success'] as const;
+const phases=['started','read_ok','configuration_failed','read_failed','upload_failed','success','command_poll_failed'] as const;
+const diagnosticSteps = new Set([
+ 'local_configuration','hfsql_schema','hfsql_statuses','portal_configuration','configuration_validation',
+ 'hfsql_export','export_file','portal_upload','portal_accepted','command_poll',
+]);
+const diagnosticReasons = new Set([
+ 'docker_daemon_unreachable','docker_image_missing','incomplete_status_catalog','invalid_status_catalog',
+ 'hfsql_reader_timeout','database_missing','export_row_limit','export_size_limit','invalid_project_flag',
+ 'unknown_column','status_not_in_hfsql','gaierror','TimeoutError','ConnectionRefusedError',
+ 'ConnectionResetError','SSLError','SSLCertVerificationError','PermissionError','FileNotFoundError',
+ 'JSONDecodeError','TimeoutExpired',
+]);
+
+function readerDiagnostic(input: unknown) {
+ if (!input || typeof input !== 'object' || Array.isArray(input)) return;
+ const value = input as Record<string, unknown>;
+ const step = value.step;
+ if (typeof step !== 'string' || !diagnosticSteps.has(step)) return;
+ const result: Record<string, string | number> = {step};
+ for (const [field, min, max] of [['durationMs', 0, 900000], ['errno', 1, 4096], ['nativeCode', -2147483648, 2147483647]] as const) {
+  const number = value[field];
+  if (typeof number === 'number' && Number.isInteger(number) && number >= min && number <= max) result[field] = number;
+ }
+ if (typeof value.sqlState === 'string' && /^[A-Z0-9]{5}$/.test(value.sqlState)) result.sqlState = value.sqlState;
+ if (typeof value.reason === 'string' && diagnosticReasons.has(value.reason)) result.reason = value.reason;
+ return result;
+}
+
 export function readerEvents(input:unknown,now=Date.now()){
  const body=input as {events?:unknown[]};
  if(!body || !Array.isArray(body.events) || !body.events.length || body.events.length>100)throw new BadRequestException('Ongeldige statusbatch.');
@@ -14,7 +41,9 @@ export function readerEvents(input:unknown,now=Date.now()){
   if(!Number.isFinite(time)||time>now+300000||time<now-30*86400000)return fail();
   if(typeof e.readerVersion!=='string'|| !/^[0-9]{1,3}\.[0-9]{1,3}(?:\.[0-9]{1,3})?$/.test(e.readerVersion))return fail();
   const number=(key:string,min:number,max:number)=>{const n=e[key];if(n==null)return null;if(typeof n!=='number'||!Number.isInteger(n)||n<min||n>max)return fail();return n;};
-  return {runId:e.runId,phase:e.phase as string,observedAt:new Date(time),readerVersion:e.readerVersion,recordCount:number('recordCount',0,20000),httpStatus:number('httpStatus',100,599)};
+  const diagnostic = readerDiagnostic(e.diagnostic);
+  return {runId:e.runId,phase:e.phase as string,observedAt:new Date(time),readerVersion:e.readerVersion,recordCount:number('recordCount',0,20000),httpStatus:number('httpStatus',100,599),
+   ...(diagnostic ? {diagnostic} : {})};
  });
 }
 export async function ingestReaderEvents(companyCode:string,body:unknown){
@@ -56,9 +85,10 @@ export class QboxMonitorController {
    prisma.qboxReaderEvent.findFirst({where:{companyCode},orderBy:{receivedAt:'desc'},select:{receivedAt:true}}),
    prisma.qboxReaderConfig.findUnique({where:{companyCode}}),
   ]);
-  const phaseOrder:Record<string,number>={started:0,read_ok:1,configuration_failed:2,read_failed:2,upload_failed:2,success:2};
+  const phaseOrder:Record<string,number>={started:0,read_ok:1,configuration_failed:2,read_failed:2,upload_failed:2,success:2,command_poll_failed:2};
   events.sort((a,b)=>b.observedAt.getTime()-a.observedAt.getTime() || (a.runId===b.runId ? phaseOrder[b.phase]-phaseOrder[a.phase] : b.receivedAt.getTime()-a.receivedAt.getTime()));
-  return {state:connectionState(events[0]??null,contact?.receivedAt??null),lastContactAt:contact?.receivedAt??null,lastImport,events,
+  const latestSync = events.find(event => event.phase !== 'command_poll_failed');
+  return {state:connectionState(latestSync??null,contact?.receivedAt??null),lastContactAt:contact?.receivedAt??null,lastImport,events,
    expectedIntervalMinutes:15,columnSelectionEnabled:true,configuration,extraColumns,columns,exportSchemaVersion:3};
  }
 }

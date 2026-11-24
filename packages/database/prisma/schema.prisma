@@ -344,6 +344,7 @@ model QboxReaderEvent {
   readerVersion String
   recordCount Int?
   httpStatus Int?
+  diagnostic Json?
   @@unique([companyCode, runId, phase])
   @@index([companyCode, observedAt])
   @@index([companyCode, receivedAt])

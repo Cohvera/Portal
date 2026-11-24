@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { validateSnapshot, verifyQboxKey, qboxCompanyCode, QboxImportController } from "./qbox";
 import { PortalGuard } from "../auth/guard";
 import type { ExecutionContext } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 const keyVars = ["QBOX_IMPORT_API_KEY","QBOX_IMPORT_COMPANY","QBOX_IMPORT_KEY_QHOME","QBOX_IMPORT_KEY_TOMME","QBOX_IMPORT_KEY_WARCO"];
 let savedEnv: (string | undefined)[];
 beforeEach(() => {
@@ -128,6 +129,31 @@ test("Direct Q-box capture has distinct provenance and requires a complete verif
     assert.throws(()=>validateSnapshot({...data,...patch}));
   assert.notEqual(valid.digest,validateSnapshot({...data,capture_sha256:"b".repeat(64)}).digest);
 });
+test("reader import logs its run ID and Prisma code on failure", async () => {
+  const { prisma, Prisma } = await import("@cohvera/database");
+  const transaction = prisma.$transaction;
+  const logError = Logger.prototype.error;
+  const messages: string[] = [];
+  process.env.QBOX_IMPORT_COMPANY = "WARCO";
+  const runId = "b279aa43-f995-4dce-a539-3be28993a976";
+  const failure = new Prisma.PrismaClientKnownRequestError("private database message", {code: "P2028", clientVersion: "test"});
+  try {
+    Logger.prototype.error = (message: string) => { messages.push(message); };
+    prisma.$transaction = (async () => { throw failure; }) as typeof transaction;
+    const payload = {source: "plenion_reader_projects", schema_version: 3, truncated: false,
+      fetched_at: new Date().toISOString(), count: 0, projects: []};
+    await assert.rejects(new QboxImportController().readerProjects(payload, "x".repeat(43), runId), error => error === failure);
+    const entry = JSON.parse(messages.at(-1)!);
+    assert.equal(entry.runId, runId);
+    assert.equal(entry.databaseCode, "P2028");
+    assert.equal(entry.httpStatus, 500);
+    assert.doesNotMatch(messages.join("\n"), /private database message|x{43}/);
+  } finally {
+    Logger.prototype.error = logError;
+    prisma.$transaction = transaction;
+  }
+});
+
 test("reader endpoint imports into server-selected company, ignoring payload company", async () => {
   const { prisma } = await import("@cohvera/database");
   const before = process.env.QBOX_IMPORT_COMPANY;

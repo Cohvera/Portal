@@ -9,6 +9,16 @@ test('telemetry validation allows only safe operational fields and bounded batch
  for(const e of [{...event,phase:'arbitrary log text'},{...event,runId:'x'},{...event,readerVersion:'password'},{...event,recordCount:-1},{...event,observedAt:new Date(now+600000).toISOString()}])assert.throws(()=>readerEvents({events:[e]},now));
  assert.throws(()=>readerEvents({events:Array(101).fill(event)},now));
 });
+test('connection diagnostics retain only known steps, codes and bounds',()=>{
+ const rows = readerEvents({events:[
+  {...event,phase:'read_failed',diagnostic:{step:'hfsql_export',errno:113,sqlState:'08001',nativeCode:0,durationMs:4000,message:'secret'}},
+  {...event,phase:'command_poll_failed',httpStatus:503,diagnostic:{step:'command_poll',reason:'private-secret',errno:-1}},
+  {...event,diagnostic:{step:'private-secret'}},
+ ]},now);
+ assert.deepEqual(rows[0].diagnostic,{step:'hfsql_export',errno:113,sqlState:'08001',nativeCode:0,durationMs:4000});
+ assert.deepEqual(rows[1].diagnostic,{step:'command_poll'});
+ assert.equal(rows[2].diagnostic,undefined);
+});
 test('old success is not online; missing completion and failures are distinct',()=>{
  const current={phase:'success',observedAt:new Date(now),receivedAt:new Date(now)};
  assert.equal(connectionState(null,null,now),'unknown');assert.equal(connectionState(current,current.receivedAt,now),'healthy');

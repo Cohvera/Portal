@@ -14,6 +14,34 @@
 .qbox-monitor th {background:#f8fafc}
 .qbox-monitor summary {cursor:pointer;font-weight:600;padding:10px 0}
 .qbox-monitor pre {white-space:pre-wrap;overflow-wrap:anywhere}
+.qbox-diagnostics{display:grid;gap:14px;margin-top:0;min-width:0}
+.qbox-diagnostics>section{margin-top:0}
+.qbox-diagnostics>h2,.qbox-diagnostics h3{margin:0;font-size:1.1rem}
+.qbox-diagnostics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.qbox-link-card .qbox-state{margin-top:12px;font-size:.875rem;font-weight:650}
+.qbox-link-card dl{margin:16px 0 0}
+.qbox-link-card dt{font-size:.84rem;color:#475569;font-weight:600}
+.qbox-link-card dd{margin:4px 0 12px;line-height:1.5}
+.qbox-link-card dd:last-child{margin-bottom:0}
+.qbox-log-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.qbox-log-heading label{display:flex;gap:8px;align-items:center;font-size:.875rem}
+.qbox-log-heading select{padding:6px 10px;border:1px solid #dce4ef;border-radius:6px;font:inherit;background:#fff;color:#34435b}
+.qbox-log-error td:first-child{border-left:3px solid #dc2626}
+.qbox-error-text{color:#991b1b}
+.qbox-error-codes{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.qbox-error-codes code{background:#fef2f2;color:#991b1b;border-radius:4px;padding:2px 6px}
+.qbox-full-run-id{display:block;max-width:18rem;overflow-wrap:anywhere}
+.qbox-diagnostics td summary{padding:0}
+@media(max-width:720px){
+ .qbox-diagnostics-grid{grid-template-columns:minmax(0,1fr)}
+ .qbox-diagnostics table,.qbox-diagnostics tbody{display:block}
+ .qbox-diagnostics thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .qbox-diagnostics tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;padding:10px 12px;border-bottom:1px solid #e2e8f0}
+ .qbox-diagnostics tbody td{display:block;border:0;padding:0}
+ .qbox-diagnostics tbody td:nth-child(n+3){grid-column:1/-1}
+ .qbox-diagnostics .qbox-log-error{border-left:3px solid #dc2626}
+ .qbox-diagnostics .qbox-log-error td:first-child{border-left:0}
+}
 @media(max-width:1000px){.qbox-metrics{grid-template-columns:1fr}}
 
 .qbox-column-group {border:1px solid #e2e8f0;border-radius:8px;margin:16px 0;padding:16px}
