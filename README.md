@@ -245,6 +245,13 @@ onbereikbare Portal ontvangt opgeslagen meldingen bij een volgende rapportage.
 Pas migratie `20261124120000_qbox_connection_diagnostics` toe en rol API en web uit
 vóór je de Qbox-reader naar 3.10 bijwerkt. Oudere readers blijven basisstatussen tonen.
 
+Reader 3.11 kan herkenbare fouten uit het lokale Qbox-journaal importeren.
+Die staan apart onder **Verbindingsdiagnose → Qbox-journaal**, met hun
+oorspronkelijke tijdstip en paginering. Historische journaalfouten veranderen
+de actuele verbindingsstatus niet. Bij de eerste import kijkt de Qbox maximaal
+48 uur terug. Met `sudo ./plenion.sh journal-sync` importeer je meteen, ook als
+de HFSQL-verbinding zelf nog faalt. De ruwe journaaltekst wordt niet verstuurd.
+
 De pagina toont de 24 verplichte exportvelden van readercontract v3 en 31 optionele PROJ-velden uit `apps/api/src/integrations/hfsql-columns.json`. De labels zijn gebaseerd op eerder onderzochte databasekolommen, niet op een openbare officiële Plenion-datadictionary. De Q-box meldt de werkelijk aanwezige namen; ontbrekende velden kunnen niet worden geselecteerd. Beheer vereist `projects.manage` binnen het gekozen bedrijf; lezen vereist `projects.read`.
 
 Kolomkeuze vereist migratie `20261023120000_qbox_columns` en reader 3.2. Deploy eerst database/API/web, daarna de reader via `sudo python3 scripts/install_reader.py --target "$HOME/plenion-reader"` vanuit de qbox-connector repository. De reader vraagt de keuze op via het met bedrijfskey beveiligde `POST /api/integrations/qbox/reader-config`. Wijzigingen via `PUT /companies/:companyCode/middleware/qbox/columns` gebruiken een revisienummer tegen gelijktijdig overschrijven. Er wordt geen remote SQL of shellcode gestuurd.

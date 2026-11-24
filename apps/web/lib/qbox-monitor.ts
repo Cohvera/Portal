@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useState} from 'react';
 import {request} from './projects';
-export type ReaderDiagnostic={step:string;reason?:string;durationMs?:number;errno?:number;sqlState?:string;nativeCode?:number};
+export type ReaderDiagnostic={step:string;reason?:string;durationMs?:number;errno?:number;sqlState?:string;nativeCode?:number;journalUnit?:string};
 export type ReaderEvent={id:string;runId:string;phase:string;observedAt:string;receivedAt:string;readerVersion:string;recordCount:number|null;httpStatus:number|null;diagnostic?:ReaderDiagnostic|null};
 export type ProjectSelection={statusCodes:string[];statusIds?:string[];outOfWip:'any'|'on'|'off';relationshipType?:'any'|'prospect'|'customer'};
 export type ReaderConfiguration={syncRequestId:string|null;syncAcknowledgedId:string|null;syncRequestedAt:string|null;commandPollAt:string|null;projectFilter:ProjectSelection|null;availableStatuses:{id?:string;code:string;label:string}[]|null;revision:number;appliedRevision:number|null;selectedColumns:string[];schemaColumns:string[];schemaReportedAt:string|null;readerVersion:string|null};
@@ -13,7 +13,7 @@ export const stepLabels:Record<string,string> = {
  hfsql_statuses:'HFSQL-statussen lezen',portal_configuration:'Portal-configuratie ophalen',
  configuration_validation:'Projectselectie controleren',hfsql_export:'HFSQL-projecten uitlezen',
  export_file:'Lokaal exportbestand lezen',portal_upload:'Projecten naar Portal uploaden',
- portal_accepted:'Portal heeft de import aanvaard',command_poll:'Sync-aanvragen ophalen',
+ portal_accepted:'Portal heeft de import aanvaard',command_poll:'Sync-aanvragen ophalen',journal_sync:'Readerdienst op de Qbox',
 };
 const reasons:Record<string,string> = {
  docker_daemon_unreachable:'De Qbox kan Docker niet bereiken.',docker_image_missing:'De HFSQL-reader-image ontbreekt op de Qbox.',
@@ -33,12 +33,12 @@ const errnoReasons:Record<number,string> = {
  110:'De netwerkverbinding antwoordde niet op tijd.',111:'De server weigert de TCP-verbinding.',
  113:'De doelhost is onbereikbaar vanaf de Qbox.',
 };
-export const failurePhases = new Set(['configuration_failed','read_failed','upload_failed','command_poll_failed']);
+export const failurePhases = new Set(['configuration_failed','read_failed','upload_failed','command_poll_failed','journal_error']);
 export const linkLabels = {commands:'Portal → Qbox', hfsql:'Qbox → HFSQL', portal:'Qbox → Portal', local:'Op de Qbox'} as const;
 
 export function eventLink(event: ReaderEvent): keyof typeof linkLabels {
  const step = event.diagnostic?.step;
- if (event.phase === 'command_poll_failed') return 'commands';
+ if (step === 'command_poll' || event.phase === 'command_poll_failed') return 'commands';
  if (step?.startsWith('hfsql_') || event.phase === 'read_ok' || (event.phase === 'read_failed' && !step)) return 'hfsql';
  if (step?.startsWith('portal_') || event.phase === 'upload_failed' || event.phase === 'success') return 'portal';
  return 'local';

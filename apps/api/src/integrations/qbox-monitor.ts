@@ -1,12 +1,13 @@
 import {requestReaderSync} from './qbox-commands';
 import {extraColumns,saveReaderConfig} from "./qbox-config";
-import {BadRequestException,Controller,ForbiddenException,Get,Param,Body,Put,Post} from '@nestjs/common';
+import {BadRequestException,Controller,ForbiddenException,Get,Param,Body,Put,Post,Query} from '@nestjs/common';
 import {prisma} from '@cohvera/database';
-const phases=['started','read_ok','configuration_failed','read_failed','upload_failed','success','command_poll_failed'] as const;
+const phases=['started','read_ok','configuration_failed','read_failed','upload_failed','success','command_poll_failed','journal_error'] as const;
 const diagnosticSteps = new Set([
  'local_configuration','hfsql_schema','hfsql_statuses','portal_configuration','configuration_validation',
- 'hfsql_export','export_file','portal_upload','portal_accepted','command_poll',
+ 'hfsql_export','export_file','portal_upload','portal_accepted','command_poll','journal_sync',
 ]);
+const journalUnits = new Set(['cohvera-reader-sync.service','cohvera-reader-command.service']);
 const diagnosticReasons = new Set([
  'docker_daemon_unreachable','docker_image_missing','incomplete_status_catalog','invalid_status_catalog',
  'hfsql_reader_timeout','database_missing','export_row_limit','export_size_limit','invalid_project_flag',
@@ -27,6 +28,7 @@ function readerDiagnostic(input: unknown) {
  }
  if (typeof value.sqlState === 'string' && /^[A-Z0-9]{5}$/.test(value.sqlState)) result.sqlState = value.sqlState;
  if (typeof value.reason === 'string' && diagnosticReasons.has(value.reason)) result.reason = value.reason;
+ if (typeof value.journalUnit === 'string' && journalUnits.has(value.journalUnit)) result.journalUnit = value.journalUnit;
  return result;
 }
 
@@ -42,6 +44,7 @@ export function readerEvents(input:unknown,now=Date.now()){
   if(typeof e.readerVersion!=='string'|| !/^[0-9]{1,3}\.[0-9]{1,3}(?:\.[0-9]{1,3})?$/.test(e.readerVersion))return fail();
   const number=(key:string,min:number,max:number)=>{const n=e[key];if(n==null)return null;if(typeof n!=='number'||!Number.isInteger(n)||n<min||n>max)return fail();return n;};
   const diagnostic = readerDiagnostic(e.diagnostic);
+  if (e.phase === 'journal_error' && !diagnostic?.journalUnit) return fail();
   return {runId:e.runId,phase:e.phase as string,observedAt:new Date(time),readerVersion:e.readerVersion,recordCount:number('recordCount',0,20000),httpStatus:number('httpStatus',100,599),
    ...(diagnostic ? {diagnostic} : {})};
  });
@@ -77,12 +80,24 @@ export class QboxMonitorController {
 
  @Put("columns")
  save(@Param("companyCode")companyCode:string,@Body()body:unknown){return saveReaderConfig(companyCode,body);}
+ @Get('journal')
+ async journal(@Param('companyCode') companyCode: string, @Query('before') before?: string) {
+  const where = {companyCode,phase:'journal_error',observedAt:{gte:new Date(Date.now()-30*86400000)}};
+  if (before !== undefined && (typeof before !== 'string' || !/^[a-z0-9]{1,64}$/.test(before)))
+   throw new BadRequestException('Ongeldige journaalpagina.');
+  const cursor = before ? await prisma.qboxReaderEvent.findFirst({where:{...where,id:before},select:{id:true,observedAt:true}}) : null;
+  if (before && !cursor) throw new BadRequestException('Journaalpagina is verlopen. Vernieuw het journaal.');
+  const events = await prisma.qboxReaderEvent.findMany({where:{...where,...(cursor ? {OR:[
+    {observedAt:{lt:cursor.observedAt}}, {observedAt:cursor.observedAt,id:{lt:cursor.id}},
+   ]} : {})},orderBy:[{observedAt:'desc'},{id:'desc'}],take:51});
+  return {events:events.slice(0,50),nextCursor:events.length>50 ? events[49].id : null};
+ }
  @Get()
  async get(@Param('companyCode')companyCode:string){
   const [lastImport,events,contact,configuration]=await Promise.all([
    prisma.qboxImport.findUnique({where:{companyCode},select:{receivedAt:true,sourceObservedAt:true,projectCount:true,contractVersion:true,sourceKind:true}}),
-   prisma.qboxReaderEvent.findMany({where:{companyCode,observedAt:{gte:new Date(Date.now()-30*86400000)}},orderBy:[{observedAt:'desc'},{receivedAt:'desc'},{id:'desc'}],take:100}),
-   prisma.qboxReaderEvent.findFirst({where:{companyCode},orderBy:{receivedAt:'desc'},select:{receivedAt:true}}),
+   prisma.qboxReaderEvent.findMany({where:{companyCode,phase:{not:'journal_error'},observedAt:{gte:new Date(Date.now()-30*86400000)}},orderBy:[{observedAt:'desc'},{receivedAt:'desc'},{id:'desc'}],take:100}),
+   prisma.qboxReaderEvent.findFirst({where:{companyCode,phase:{not:'journal_error'}},orderBy:{receivedAt:'desc'},select:{receivedAt:true}}),
    prisma.qboxReaderConfig.findUnique({where:{companyCode}}),
   ]);
   const phaseOrder:Record<string,number>={started:0,read_ok:1,configuration_failed:2,read_failed:2,upload_failed:2,success:2,command_poll_failed:2};

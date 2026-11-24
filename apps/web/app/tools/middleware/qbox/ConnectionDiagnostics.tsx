@@ -1,14 +1,16 @@
 "use client";
 
-import {useState} from 'react';
-import {connectionDiagnostics,eventExplanation,eventLink,failurePhases,linkLabels,monitorTime,phaseLabels,stepLabels,type Monitor} from '../../../../lib/qbox-monitor';
+import {useEffect,useState} from 'react';
+import {request} from '../../../../lib/projects';
+import {connectionDiagnostics,eventExplanation,eventLink,failurePhases,linkLabels,monitorTime,phaseLabels,stepLabels,type Monitor,type ReaderEvent} from '../../../../lib/qbox-monitor';
 
 const pollLabels = {unknown:'Nog geen contact',healthy:'Qbox haalt aanvragen op',stale:'Geen recente controle',error:'Ophalen mislukt'};
 const hfsqlLabels = {unknown:'Nog geen resultaat',healthy:'HFSQL bereikbaar',stale:'Geen recente meting',error:'HFSQL-stap mislukt'};
 
-export function ConnectionDiagnostics({data}:{data:Monitor}) {
+export function ConnectionDiagnostics({data,companyCode}:{data:Monitor;companyCode:string}) {
  const {pollAt,pollFailure,pollState,upload,hfsql,hfsqlFailed,hfsqlState} = connectionDiagnostics(data);
  const [filter,setFilter] = useState('errors');
+ const [showJournal,setShowJournal] = useState(false);
  const events = data.events.filter(event => {
   if (filter === 'all') return true;
   if (filter === 'errors') return failurePhases.has(event.phase);
@@ -43,13 +45,23 @@ export function ConnectionDiagnostics({data}:{data:Monitor}) {
   </div>
   <section className="card">
    <div className="qbox-log-heading">
-    <h3>Verbindingslog</h3>
-    <label>Toon <select value={filter} onChange={event => setFilter(event.target.value)}>
+    <div className="qbox-log-switch" role="group" aria-label="Logweergave">
+     <button type="button" aria-pressed={!showJournal} onClick={() => setShowJournal(false)}>Verbindingslog</button>
+     <button type="button" aria-pressed={showJournal} onClick={() => setShowJournal(true)}>Qbox-journaal</button>
+    </div>
+    {!showJournal && <label>Toon <select value={filter} onChange={event => setFilter(event.target.value)}>
      <option value="errors">Alleen fouten</option><option value="all">Alle meldingen</option>
      <option value="portal">Portal ↔ Qbox</option><option value="hfsql">Qbox → HFSQL</option>
-    </select></label>
+    </select></label>}
    </div>
-   {events.length ? <div className="qbox-table-scroll"><table role="table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Tijdstip</th><th role="columnheader">Verbinding</th><th role="columnheader">Stap en diagnose</th><th role="columnheader">Poging</th></tr></thead>
+   {showJournal ? <QboxJournal companyCode={companyCode}/> : events.length ? <EventLog events={events}/> : <p className="muted">{filter === 'errors' ? 'Geen fouten ontvangen in de getoonde logperiode.' : 'Geen meldingen voor deze selectie.'}</p>}
+   <details><summary>Meer details op de Qbox</summary><p>Bij een verbroken Portal-verbinding ontvangt dit scherm de fout pas zodra de Qbox weer kan rapporteren.</p><pre>sudo ./plenion.sh debug</pre></details>
+  </section>
+ </section>;
+}
+
+function EventLog({events,journal=false}:{events:ReaderEvent[];journal?:boolean}) {
+ return <div className="qbox-table-scroll"><table role="table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Tijdstip</th><th role="columnheader">Verbinding</th><th role="columnheader">Stap en diagnose</th><th role="columnheader">{journal ? 'Melding' : 'Poging'}</th></tr></thead>
     <tbody role="rowgroup">{events.map(event => {
      const diagnostic = event.diagnostic;
      const failed = failurePhases.has(event.phase);
@@ -64,10 +76,33 @@ export function ConnectionDiagnostics({data}:{data:Monitor}) {
        <small className="muted">{diagnostic?.durationMs != null && `Poging ${Math.round(diagnostic.durationMs / 1000)} s`}
         {diagnostic?.durationMs != null && event.recordCount != null && ' · '}{event.recordCount != null && `${event.recordCount} exportrecords`}</small>
       </td>
-      <td role="cell"><details><summary aria-label={`Poging ${event.runId.slice(0,8)}`}><code>{event.runId.slice(0,8)}</code></summary><code className="qbox-full-run-id">{event.runId}</code><div>Ontvangen {monitorTime(event.receivedAt)}</div><div>Reader {event.readerVersion}</div></details></td>
+      <td role="cell"><details><summary aria-label={`Melding ${event.runId.slice(0,8)}`}><code>{event.runId.slice(0,8)}</code></summary><code className="qbox-full-run-id">{event.runId}</code><div>Ontvangen {monitorTime(event.receivedAt)}</div>{journal ? <div>{diagnostic?.journalUnit}</div> : <div>Reader {event.readerVersion}</div>}</details></td>
      </tr>;
-    })}</tbody></table></div> : <p className="muted">{filter === 'errors' ? 'Geen fouten ontvangen in de getoonde logperiode.' : 'Geen meldingen voor deze selectie.'}</p>}
-   <details><summary>Meer details op de Qbox</summary><p>Bij een verbroken Portal-verbinding ontvangt dit scherm de fout pas zodra de Qbox weer kan rapporteren.</p><pre>sudo ./plenion.sh debug</pre></details>
-  </section>
- </section>;
+    })}</tbody></table></div>;
+}
+
+function QboxJournal({companyCode}:{companyCode:string}) {
+ const [page,setPage] = useState<{cursor:string|null}>({cursor:null});
+ const [result,setResult] = useState<{events:ReaderEvent[];nextCursor:string|null}|null>(null);
+ const [loading,setLoading] = useState(true);
+ const [error,setError] = useState('');
+ useEffect(() => {
+  const controller = new AbortController();
+  const params = page.cursor ? `?before=${encodeURIComponent(page.cursor)}` : '';
+  setLoading(true);setError('');
+  request<{events:ReaderEvent[];nextCursor:string|null}>(`/api/companies/${encodeURIComponent(companyCode)}/middleware/qbox/journal${params}`,{signal:controller.signal})
+   .then(next=>{if(!controller.signal.aborted)setResult(previous=>page.cursor && previous ? {...next,events:[...previous.events,...next.events]} : next);})
+   .catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error ? e.message : 'Qbox-journaal ophalen mislukt.');})
+   .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+  return () => controller.abort();
+ },[companyCode,page]);
+ return <>
+  <p className="muted">Fouten uit de automatische sync-service en de service voor sync-aanvragen op de Qbox.</p>
+  {error && <p role="alert">{error}</p>}
+  {result?.events.length ? <EventLog events={result.events} journal/> : !loading && !error && <p className="muted">Nog geen journaalfouten ontvangen.</p>}
+  <div className="qbox-actions">
+   <button className="qbox-action qbox-action-secondary" type="button" disabled={loading} onClick={()=>setPage({cursor:null})}>{loading ? 'Ophalen…' : 'Journaal vernieuwen'}</button>
+   {result?.nextCursor && <button className="qbox-action qbox-action-secondary" type="button" disabled={loading} onClick={()=>setPage({cursor:result.nextCursor})}>Oudere meldingen</button>}
+  </div>
+ </>;
 }

@@ -41,7 +41,7 @@ function QboxDashboard({companyCode,companyName,canManage}:{companyCode:string;c
  {syncMessage&&<p role="status">{syncMessage}</p>}
  {error&&<div className="alert" role="alert">Status kon niet worden vernieuwd: {error}. Eventuele gegevens hieronder zijn van de vorige controle.</div>}
  {loading&&!data?<p role="status">Koppeling ophalen…</p>:data&&<>
- <ConnectionDiagnostics data={data}/>
+ <ConnectionDiagnostics data={data} companyCode={companyCode}/>
  <ColumnSettings key={data.configuration?.revision??"new"} data={data} companyCode={companyCode} canManage={canManage} onSaved={refresh}/><p className="muted">De status vernieuwt automatisch elke 30 seconden.</p>
  </>}
  </main>;

@@ -19,6 +19,12 @@ test('connection diagnostics retain only known steps, codes and bounds',()=>{
  assert.deepEqual(rows[1].diagnostic,{step:'command_poll'});
  assert.equal(rows[2].diagnostic,undefined);
 });
+test('journal events require a known unit and drop the original log text',()=>{
+ const diagnostic = {step:'hfsql_export',errno:113,journalUnit:'cohvera-reader-sync.service',message:'private-log-text'};
+ const row = readerEvents({events:[{...event,phase:'journal_error',diagnostic}]},now)[0];
+ assert.deepEqual(row.diagnostic,{step:'hfsql_export',errno:113,journalUnit:'cohvera-reader-sync.service'});
+ assert.throws(()=>readerEvents({events:[{...event,phase:'journal_error',diagnostic:{...diagnostic,journalUnit:'unrelated.service'}}]},now));
+});
 test('old success is not online; missing completion and failures are distinct',()=>{
  const current={phase:'success',observedAt:new Date(now),receivedAt:new Date(now)};
  assert.equal(connectionState(null,null,now),'unknown');assert.equal(connectionState(current,current.receivedAt,now),'healthy');
@@ -43,8 +49,28 @@ test('dashboard queries are all company scoped',async()=>{
  try{
   (prisma.qboxReaderConfig as any).findUnique=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return null;};
   (prisma.qboxImport as any).findUnique=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return null;};
-  (prisma.qboxReaderEvent as any).findMany=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return [];};
-  (prisma.qboxReaderEvent as any).findFirst=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');return null;};
+  (prisma.qboxReaderEvent as any).findMany=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');assert.deepEqual(args.where.phase,{not:'journal_error'});return [];};
+  (prisma.qboxReaderEvent as any).findFirst=async(args:any)=>{assert.equal(args.where.companyCode,'QHOME');assert.deepEqual(args.where.phase,{not:'journal_error'});return null;};
   const result=await new QboxMonitorController().get('QHOME');assert.equal(result.state,'unknown');assert.equal(result.columnSelectionEnabled,true);assert.equal(result.columns.length,24);
  }finally{prisma.qboxReaderConfig.findUnique=originalConfig;prisma.qboxImport.findUnique=originalImport;prisma.qboxReaderEvent.findMany=originalMany;prisma.qboxReaderEvent.findFirst=originalFirst;}
+});
+
+test('journal pages only use cursors from the selected company',async()=>{
+ const originalMany=prisma.qboxReaderEvent.findMany,originalFirst=prisma.qboxReaderEvent.findFirst;
+ const stamp=new Date();
+ try{
+  (prisma.qboxReaderEvent as any).findFirst=async({where}:any)=>{
+   assert.equal(where.companyCode,'WARCO');assert.equal(where.phase,'journal_error');
+   return where.id==='samecompany' ? {id:where.id,observedAt:stamp} : null;
+  };
+  (prisma.qboxReaderEvent as any).findMany=async({where,take}:any)=>{
+   assert.equal(where.companyCode,'WARCO');assert.equal(where.phase,'journal_error');assert.equal(take,51);
+   assert.deepEqual(where.OR,[{observedAt:{lt:stamp}},{observedAt:stamp,id:{lt:'samecompany'}}]);
+   return Array.from({length:51},(_,i)=>({id:`entry${i}`}));
+  };
+  const controller=new QboxMonitorController();
+  await assert.rejects(controller.journal('WARCO','othercompany'));
+  const page=await controller.journal('WARCO','samecompany');
+  assert.equal(page.events.length,50);assert.equal(page.nextCursor,'entry49');
+ }finally{prisma.qboxReaderEvent.findMany=originalMany;prisma.qboxReaderEvent.findFirst=originalFirst;}
 });
