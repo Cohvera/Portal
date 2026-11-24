@@ -49,11 +49,19 @@ export function eventExplanation(event: ReaderEvent) {
  if (detail?.reason && reasons[detail.reason]) return reasons[detail.reason];
  if (detail?.errno && errnoReasons[detail.errno]) return errnoReasons[detail.errno];
  if (detail?.sqlState === '08001') return 'De HFSQL-driver kon geen sessie openen. Controleer de server, database en aanmelding.';
+ if (detail?.sqlState === '08004') return 'De server heeft de HFSQL-verbinding geweigerd.';
  if (detail?.sqlState === '28000') return 'HFSQL heeft de aanmelding geweigerd.';
+ if (detail?.sqlState === '08S01') return 'De verbinding tussen de driver en HFSQL is onderbroken.';
+ if (detail?.sqlState === 'HYT00' || detail?.sqlState === 'HYT01') return 'De HFSQL-bewerking overschreed de tijdslimiet.';
+ if (detail?.sqlState === '42S02' || detail?.sqlState === '42S22') return 'HFSQL vindt een tabel of kolom uit de query niet.';
+ if (detail?.sqlState === 'IM002' || detail?.sqlState === 'IM003') return 'ODBC kon de ingestelde gegevensbron of driver niet laden.';
  if (detail?.sqlState) return 'De HFSQL-driver meldt een fout tijdens deze stap.';
  if (event.httpStatus === 401 || event.httpStatus === 403) return 'Portal weigert de aanvraag. Controleer de bedrijfs-API-sleutel en toegang.';
  if (event.httpStatus === 400) return 'Portal heeft de aangeleverde gegevens afgewezen. Zoek het poging-ID op in de API-log.';
  if (event.httpStatus === 409) return 'De aanvraag botst met de opgeslagen configuratie of laatste import. Zoek het poging-ID op in de API-log.';
+ if (event.httpStatus === 413) return 'Portal of de proxy weigert de aanvraag omdat die te groot is.';
+ if (event.httpStatus === 429) return 'De server beperkt het aantal aanvragen.';
+ if (event.httpStatus === 502 || event.httpStatus === 504) return 'De Portal-proxy kreeg geen bruikbaar antwoord van de API.';
  if (event.httpStatus && event.httpStatus >= 500) return 'Portal geeft een serverfout. Zoek het poging-ID op in de API-log.';
  return failurePhases.has(event.phase) ? 'Bekijk het Qbox-journaal voor extra informatie over deze poging.' : '';
 }

@@ -14,6 +14,19 @@
 .qbox-monitor th {background:#f8fafc}
 .qbox-monitor summary {cursor:pointer;font-weight:600;padding:10px 0}
 .qbox-monitor pre {white-space:pre-wrap;overflow-wrap:anywhere}
+.qbox-connection-summary{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:0}
+.qbox-connection-indicators{display:flex;gap:16px 28px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
+.qbox-connection-indicators li{display:flex;align-items:flex-start;gap:10px}
+.qbox-connection-indicators small{display:block;margin-top:3px;color:#475569}
+.qbox-status-dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none;background:#64748b}
+.qbox-status-dot-healthy{background:#15803d}
+.qbox-status-dot-error{background:#b91c1c}
+.qbox-status-dot-stale{background:#b45309}
+.qbox-diagnostics-dialog{width:min(calc(100% - 24px),1040px);max-height:calc(100dvh - 32px);padding:0;overflow:auto;border:1px solid #dce4ef;border-radius:14px;background:#f6f8fc;color:#111827}
+.qbox-diagnostics-dialog::backdrop{background:#081a3388}
+.qbox-dialog-heading{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #e4e9f1;background:#fff}
+.qbox-dialog-heading h2{margin:0}
+.qbox-diagnostics-dialog .qbox-diagnostics{padding:16px}
 .qbox-diagnostics{display:grid;gap:14px;margin-top:0;min-width:0}
 .qbox-diagnostics>section{margin-top:0}
 .qbox-diagnostics>h2,.qbox-diagnostics h3{margin:0;font-size:1.1rem}
@@ -36,6 +49,11 @@
 .qbox-error-codes code{background:#fef2f2;color:#991b1b;border-radius:4px;padding:2px 6px}
 .qbox-full-run-id{display:block;max-width:18rem;overflow-wrap:anywhere}
 .qbox-diagnostics td summary{padding:0}
+.qbox-diagnostics .qbox-recovery{margin-top:8px;font-size:.875rem;color:#334155}
+.qbox-diagnostics .qbox-recovery summary{display:list-item;padding:0;color:#3447b6}
+.qbox-recovery ol{margin:8px 0 0;padding-inline-start:20px}
+.qbox-recovery li+li{margin-top:8px}
+.qbox-recovery pre{padding:8px;margin:6px 0 0;border-radius:6px;background:#f1f5f9}
 @media(max-width:720px){
  .qbox-diagnostics-grid{grid-template-columns:minmax(0,1fr)}
  .qbox-diagnostics table,.qbox-diagnostics tbody{display:block}
